@@ -1,41 +1,42 @@
 'use client';
-
+import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface ScreenHeaderProps {
   title: string;
   backHref?: string;
+  backLabel?: string;
   rightElement?: React.ReactNode;
+  className?: string;
 }
 
-export default function ScreenHeader({ title, backHref, rightElement }: ScreenHeaderProps) {
-  const router = useRouter();
-
-  const handleBack = () => {
-    if (backHref) {
-      router.push(backHref);
-    } else {
-      router.back();
-    }
-  };
-
+export function ScreenHeader({
+  title,
+  backHref,
+  rightElement,
+  className,
+}: ScreenHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-4 bg-[#0A0F1E] border-b border-[#1F2937]">
-      <div className="flex items-center gap-3 flex-1">
-        {backHref !== undefined && (
-          <button
-            onClick={handleBack}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#111827] border border-[#1F2937] text-white hover:bg-[#1F2937] transition-colors"
+    <div
+      className={cn(
+        'flex items-center justify-between px-4 py-3 border-b border-[#1F2937] flex-shrink-0',
+        className
+      )}
+      style={{ background: '#0A0F1E' }}
+    >
+      <div className="flex items-center gap-3">
+        {backHref && (
+          <Link
+            href={backHref}
+            className="flex items-center justify-center w-9 h-9 rounded-xl border border-[#1F2937] text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
           >
             <ArrowLeft size={18} />
-          </button>
+          </Link>
         )}
-        <h1 className="text-lg font-bold text-white">{title}</h1>
+        <h1 className="text-white font-bold text-lg leading-tight">{title}</h1>
       </div>
-      {rightElement && (
-        <div className="flex-shrink-0">{rightElement}</div>
-      )}
+      {rightElement && <div>{rightElement}</div>}
     </div>
   );
 }
