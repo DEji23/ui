@@ -1,131 +1,95 @@
 'use client';
-
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
 interface Passenger {
   id: string;
   name: string;
-  boardingType: 'qr' | 'manual';
-  stop: string;
+  type: 'qr' | 'manual';
+  boardedAt: string;
 }
 
 interface AppState {
-  // Driver info
+  // Driver
   driverName: string;
   driverCode: string;
   driverPhone: string;
-
-  // Bus info
+  // Bus / shift
   busCode: string;
   route: string;
   routeFrom: string;
   routeTo: string;
   capacity: number;
   depot: string;
-
-  // Shift state
   isShiftActive: boolean;
-  setIsShiftActive: (v: boolean) => void;
-  shiftStartTime: string;
-  tripsToday: number;
-
+  setShiftActive: (v: boolean) => void;
   // Passengers
   passengers: Passenger[];
-  addPassenger: (p: Omit<Passenger, 'id'>) => void;
-  removePassenger: (id: string) => void;
-  setPassengers: (passengers: Passenger[]) => void;
-
+  addPassenger: (p: Passenger) => void;
+  setPassengers: (ps: Passenger[]) => void;
   // Financials
   cashCollected: number;
   setCashCollected: (v: number) => void;
   walletEarnings: number;
   setWalletEarnings: (v: number) => void;
-
   // Emergency
-  isEmergencyActive: boolean;
   triggerEmergency: () => void;
-
-  // Login state
-  isLoggedIn: boolean;
-  setIsLoggedIn: (v: boolean) => void;
-  wrongPinAttempts: number;
-  incrementWrongPin: () => void;
-  resetWrongPin: () => void;
+  // PIN lock
+  pinAttempts: number;
+  setPinAttempts: (v: number) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [isShiftActive, setIsShiftActive] = useState(false);
+  const [isShiftActive, setShiftActive] = useState(false);
   const [passengers, setPassengers] = useState<Passenger[]>([
-    { id: '1', name: 'Amaka Obi', boardingType: 'qr', stop: 'Oshodi' },
-    { id: '2', name: 'Tunde Bakare', boardingType: 'qr', stop: 'Oshodi' },
-    { id: '3', name: 'Ngozi Eze', boardingType: 'manual', stop: 'Oshodi' },
-    { id: '4', name: 'Emeka Nwosu', boardingType: 'qr', stop: 'Oshodi' },
+    { id: '1', name: 'Amaka O.', type: 'qr', boardedAt: '9:05 AM' },
+    { id: '2', name: 'Bello T.', type: 'manual', boardedAt: '9:07 AM' },
+    { id: '3', name: 'Chisom E.', type: 'qr', boardedAt: '9:10 AM' },
+    { id: '4', name: 'Dami F.', type: 'qr', boardedAt: '9:12 AM' },
   ]);
   const [cashCollected, setCashCollected] = useState(3500);
   const [walletEarnings, setWalletEarnings] = useState(1250);
-  const [isEmergencyActive, setIsEmergencyActive] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [wrongPinAttempts, setWrongPinAttempts] = useState(0);
+  const [pinAttempts, setPinAttempts] = useState(0);
 
-  const addPassenger = useCallback((p: Omit<Passenger, 'id'>) => {
-    setPassengers((prev) => [
-      ...prev,
-      { ...p, id: Math.random().toString(36).slice(2) },
-    ]);
-  }, []);
-
-  const removePassenger = useCallback((id: string) => {
-    setPassengers((prev) => prev.filter((p) => p.id !== id));
+  const addPassenger = useCallback((p: Passenger) => {
+    setPassengers((prev) => [...prev, p]);
   }, []);
 
   const triggerEmergency = useCallback(() => {
-    // Silent trigger — no visual change on drive mode screen
-    console.log('[KOJA EMERGENCY] Code Red triggered at', new Date().toISOString());
-    setIsEmergencyActive(true);
+    // Silent trigger — no visual change on screen
+    console.log('[KOJA EMERGENCY] Code Red triggered silently at', new Date().toISOString());
   }, []);
 
-  const incrementWrongPin = useCallback(() => {
-    setWrongPinAttempts((prev) => prev + 1);
-  }, []);
-
-  const resetWrongPin = useCallback(() => {
-    setWrongPinAttempts(0);
-  }, []);
-
-  const value: AppState = {
-    driverName: 'Ibrahim Adeyemi',
-    driverCode: 'DRV-4821',
-    driverPhone: '+234 801 234 5678',
-    busCode: 'LG-458-KA',
-    route: 'Oshodi → CMS',
-    routeFrom: 'Oshodi',
-    routeTo: 'CMS',
-    capacity: 18,
-    depot: 'Mile 2 Depot',
-    isShiftActive,
-    setIsShiftActive,
-    shiftStartTime: '6:30 AM',
-    tripsToday: 4,
-    passengers,
-    addPassenger,
-    removePassenger,
-    setPassengers,
-    cashCollected,
-    setCashCollected,
-    walletEarnings,
-    setWalletEarnings,
-    isEmergencyActive,
-    triggerEmergency,
-    isLoggedIn,
-    setIsLoggedIn,
-    wrongPinAttempts,
-    incrementWrongPin,
-    resetWrongPin,
-  };
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider
+      value={{
+        driverName: 'Ibrahim Adeyemi',
+        driverCode: 'DRV-4821',
+        driverPhone: '+234 801 234 5678',
+        busCode: 'LG-458-KA',
+        route: 'Oshodi → CMS',
+        routeFrom: 'Oshodi',
+        routeTo: 'CMS',
+        capacity: 18,
+        depot: 'Mile 2 Depot',
+        isShiftActive,
+        setShiftActive,
+        passengers,
+        addPassenger,
+        setPassengers,
+        cashCollected,
+        setCashCollected,
+        walletEarnings,
+        setWalletEarnings,
+        triggerEmergency,
+        pinAttempts,
+        setPinAttempts,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
 }
 
 export function useApp(): AppState {

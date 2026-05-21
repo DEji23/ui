@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Standalone mode for monorepo
+  reactStrictMode: true,
 };
 
 export default nextConfig;

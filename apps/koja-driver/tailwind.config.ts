@@ -21,13 +21,12 @@ const config: Config = {
       },
       animation: {
         'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'flash-border': 'flashBorder 0.5s ease-in-out infinite alternate',
-        'spin-slow': 'spin 3s linear infinite',
+        'border-flash': 'borderFlash 0.8s ease-in-out infinite',
       },
       keyframes: {
-        flashBorder: {
-          '0%': { borderColor: '#F59E0B', boxShadow: '0 0 0 4px rgba(245,158,11,0.4)' },
-          '100%': { borderColor: '#FBBF24', boxShadow: '0 0 0 8px rgba(245,158,11,0.1)' },
+        borderFlash: {
+          '0%, 100%': { borderColor: '#F59E0B', boxShadow: '0 0 0 4px rgba(245,158,11,0.5)' },
+          '50%': { borderColor: 'transparent', boxShadow: 'none' },
         },
       },
     },
