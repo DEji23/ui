@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Avatar } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
+import { Sheet } from "@/components/ui/sheet"
+import { Dialog } from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
 import { cn, formatNGN } from "@/lib/utils"
-import { drivers, type DriverStatus } from "@/lib/data"
-import { Add, SearchNormal1, Star1 } from "iconsax-react"
+import { drivers, type Driver, type DriverStatus } from "@/lib/data"
+import { Add, SearchNormal1, Star1, Call, Slash, Warning2, TickCircle, Sms, Car } from "iconsax-react"
 
 const statusConfig: Record<
   DriverStatus,
@@ -26,11 +29,28 @@ const statusConfig: Record<
 const filters = ["All", "Active", "Late", "Offline", "On Leave", "Blocked"] as const
 type Filter = (typeof filters)[number]
 
+type Toast = { id: number; message: string; type: "success" | "error" | "info" }
+type ConfirmAction = { type: "force_offline" | "block" | "unblock"; driver: Driver }
+
 export default function DriversPage() {
   const [filter, setFilter] = useState<Filter>("All")
   const [search, setSearch] = useState("")
+  const [selected, setSelected] = useState<Driver | null>(null)
+  const [driverStates, setDriverStates] = useState<Record<string, DriverStatus>>(() =>
+    Object.fromEntries(drivers.map((d) => [d.id, d.status]))
+  )
+  const [confirm, setConfirm] = useState<ConfirmAction | null>(null)
+  const [toasts, setToasts] = useState<Toast[]>([])
 
-  const filtered = drivers.filter((d) => {
+  function addToast(message: string, type: Toast["type"] = "success") {
+    const id = Date.now()
+    setToasts((t) => [...t, { id, message, type }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
+  }
+
+  const mergedDrivers = drivers.map((d) => ({ ...d, status: driverStates[d.id] ?? d.status }))
+
+  const filtered = mergedDrivers.filter((d) => {
     const matchesFilter =
       filter === "All" ||
       (filter === "Active" && d.status === "active") ||
@@ -45,7 +65,25 @@ export default function DriversPage() {
     return matchesFilter && matchesSearch
   })
 
-  const activeCount = drivers.filter((d) => d.status === "active").length
+  const selectedDriver = selected ? mergedDrivers.find((d) => d.id === selected.id) ?? selected : null
+  const activeCount = mergedDrivers.filter((d) => d.status === "active").length
+
+  function handleConfirm() {
+    if (!confirm) return
+    const { type, driver } = confirm
+    if (type === "force_offline") {
+      setDriverStates((s) => ({ ...s, [driver.id]: "offline" }))
+      addToast(`${driver.name} forced offline`)
+    } else if (type === "block") {
+      setDriverStates((s) => ({ ...s, [driver.id]: "blocked" }))
+      addToast(`${driver.name} has been blocked`, "error")
+    } else if (type === "unblock") {
+      setDriverStates((s) => ({ ...s, [driver.id]: "offline" }))
+      addToast(`${driver.name} unblocked — set to offline`, "info")
+    }
+    setConfirm(null)
+    setSelected(null)
+  }
 
   return (
     <>
@@ -60,20 +98,10 @@ export default function DriversPage() {
         }
       />
       <main className="flex-1 p-6 space-y-5">
-        {/* Filters */}
         <div className="flex items-center gap-3">
           <div className="relative max-w-xs">
-            <SearchNormal1
-              size={14}
-              color="#52525b"
-              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            />
-            <Input
-              placeholder="Search name or code…"
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <SearchNormal1 size={14} color="#52525b" className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Input placeholder="Search name or code…" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <div className="flex gap-1">
             {filters.map((f) => (
@@ -93,13 +121,16 @@ export default function DriversPage() {
           </div>
         </div>
 
-        {/* Grid */}
         <div className="grid grid-cols-3 gap-4">
           {filtered.map((driver) => {
             const sc = statusConfig[driver.status]
             const weekFill = (driver.hoursThisWeek / 60) * 100
             return (
-              <Card key={driver.id} className="hover:border-white/[0.12] transition-colors">
+              <Card
+                key={driver.id}
+                className="hover:border-white/[0.18] transition-colors cursor-pointer"
+                onClick={() => setSelected(driver)}
+              >
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -142,19 +173,11 @@ export default function DriversPage() {
                     <div>
                       <div className="flex justify-between mb-1">
                         <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Hours This Week</p>
-                        <p className="text-[11px] text-zinc-500">
-                          {driver.hoursThisWeek}h / 60h
-                        </p>
+                        <p className="text-[11px] text-zinc-500">{driver.hoursThisWeek}h / 60h</p>
                       </div>
                       <Progress
                         value={weekFill}
-                        colorClass={
-                          weekFill > 83
-                            ? "bg-red-500"
-                            : weekFill > 67
-                            ? "bg-yellow-500"
-                            : "bg-amber-500"
-                        }
+                        colorClass={weekFill > 83 ? "bg-red-500" : weekFill > 67 ? "bg-yellow-500" : "bg-amber-500"}
                       />
                     </div>
                   )}
@@ -170,6 +193,243 @@ export default function DriversPage() {
           </div>
         )}
       </main>
+
+      {/* Driver detail sheet */}
+      <Sheet
+        open={!!selectedDriver}
+        onClose={() => setSelected(null)}
+        title={selectedDriver?.name ?? ""}
+        subtitle={selectedDriver ? `${selectedDriver.code} · ${statusConfig[selectedDriver.status].label}` : ""}
+        footer={
+          selectedDriver ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  addToast(`Calling ${selectedDriver.phone}…`, "info")
+                  setSelected(null)
+                }}
+              >
+                <Call size={14} color="currentColor" />
+                Call Driver
+              </Button>
+              {selectedDriver.status === "active" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setConfirm({ type: "force_offline", driver: selectedDriver })}
+                >
+                  <Slash size={14} color="currentColor" />
+                  Force Offline
+                </Button>
+              )}
+              <div className="ml-auto">
+                {selectedDriver.status === "blocked" ? (
+                  <Button
+                    variant="success"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setConfirm({ type: "unblock", driver: selectedDriver })}
+                  >
+                    <TickCircle size={14} color="currentColor" />
+                    Unblock Driver
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setConfirm({ type: "block", driver: selectedDriver })}
+                  >
+                    <Warning2 size={14} color="currentColor" />
+                    Block Driver
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : undefined
+        }
+      >
+        {selectedDriver && (
+          <div className="px-6 py-5 space-y-5">
+            {/* Identity */}
+            <div className="flex items-center gap-4">
+              <Avatar name={selectedDriver.name} size="xl" />
+              <div>
+                <p className="text-base font-bold text-zinc-100">{selectedDriver.name}</p>
+                <p className="text-sm text-zinc-500">{selectedDriver.code}</p>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <Sms size={12} color="#71717a" variant="Linear" />
+                  <p className="text-xs text-zinc-400">{selectedDriver.phone}</p>
+                </div>
+              </div>
+              <Badge variant={statusConfig[selectedDriver.status].variant} className="ml-auto">
+                {statusConfig[selectedDriver.status].label}
+              </Badge>
+            </div>
+
+            <Separator />
+
+            {/* Current assignment */}
+            {selectedDriver.route ? (
+              <div>
+                <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Current Assignment</p>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Car size={14} color="#f59e0b" variant="Bold" />
+                    <span className="text-sm text-zinc-300">{selectedDriver.bus}</span>
+                  </div>
+                  <p className="text-sm font-medium text-zinc-100">{selectedDriver.route}</p>
+                  {selectedDriver.shiftStart && (
+                    <p className="text-xs text-zinc-500">Shift started {selectedDriver.shiftStart}</p>
+                  )}
+                  {selectedDriver.currentPassengers !== undefined && (
+                    <div className="pt-1">
+                      <div className="flex justify-between text-[11px] mb-1">
+                        <span className="text-zinc-600">Passengers onboard</span>
+                        <span className="text-zinc-400">{selectedDriver.currentPassengers} pax</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 text-center text-zinc-600 text-sm">
+                No active assignment
+              </div>
+            )}
+
+            {/* Stats */}
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Today’s Performance</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center">
+                  <p className="text-xl font-bold text-zinc-100">{selectedDriver.tripsToday}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Trips</p>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center">
+                  <p className="text-lg font-bold text-emerald-400">{formatNGN(selectedDriver.earningsToday)}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Earned</p>
+                </div>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Star1 size={14} color="#f59e0b" variant="Bold" />
+                    <p className="text-xl font-bold text-zinc-100">{selectedDriver.rating}</p>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Rating</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Compliance */}
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Compliance</p>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-zinc-400">Hours this week</span>
+                    <span className={cn(
+                      "font-medium",
+                      selectedDriver.hoursThisWeek > 50 ? "text-red-400" : "text-zinc-300"
+                    )}>
+                      {selectedDriver.hoursThisWeek}h / 60h
+                    </span>
+                  </div>
+                  <Progress
+                    value={(selectedDriver.hoursThisWeek / 60) * 100}
+                    colorClass={
+                      selectedDriver.hoursThisWeek > 50 ? "bg-red-500" :
+                      selectedDriver.hoursThisWeek > 40 ? "bg-yellow-500" : "bg-amber-500"
+                    }
+                  />
+                  {selectedDriver.hoursThisWeek > 50 && (
+                    <p className="text-[11px] text-red-400 mt-1">Approaching weekly hour limit</p>
+                  )}
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2.5">
+                  <span className="text-xs text-zinc-400">Compliance status</span>
+                  <Badge variant={
+                    selectedDriver.complianceStatus === "clear" ? "success" :
+                    selectedDriver.complianceStatus === "warning" ? "warning" : "destructive"
+                  }>
+                    {selectedDriver.complianceStatus === "clear" ? "Clear" :
+                     selectedDriver.complianceStatus === "warning" ? "Warning" : "Blocked"}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Incidents */}
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Recent Incidents</p>
+              {selectedDriver.complianceStatus === "blocked" ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3">
+                  <p className="text-xs text-red-400 font-medium">Driver blocked — pending review</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Account suspended. Contact compliance to resolve.</p>
+                </div>
+              ) : selectedDriver.complianceStatus === "warning" ? (
+                <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/[0.04] p-3">
+                  <p className="text-xs text-yellow-400 font-medium">Late start — {selectedDriver.name}</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Did not accept shift on time. Logged today.</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-center">
+                  <p className="text-xs text-zinc-600">No incidents recorded</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Sheet>
+
+      {/* Confirm action dialog */}
+      <Dialog
+        open={!!confirm}
+        onClose={() => setConfirm(null)}
+        title={
+          confirm?.type === "block" ? "Block Driver" :
+          confirm?.type === "unblock" ? "Unblock Driver" : "Force Offline"
+        }
+        description={
+          confirm?.type === "block"
+            ? `${confirm.driver.name} will be blocked immediately and cannot accept any trips. This action is logged.`
+            : confirm?.type === "unblock"
+            ? `${confirm?.driver.name} will be unblocked and set to offline. They can resume accepting shifts.`
+            : `${confirm?.driver.name} will be marked offline immediately. Any active trip will be flagged.`
+        }
+      >
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" onClick={() => setConfirm(null)}>Cancel</Button>
+          <Button
+            size="sm"
+            variant={confirm?.type === "unblock" ? "success" : "destructive"}
+            onClick={handleConfirm}
+          >
+            {confirm?.type === "block" ? "Block Driver" :
+             confirm?.type === "unblock" ? "Unblock" : "Force Offline"}
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Toasts */}
+      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              "px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-sm",
+              t.type === "success" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+              t.type === "error" && "bg-red-500/10 border-red-500/20 text-red-300",
+              t.type === "info" && "bg-blue-500/10 border-blue-500/20 text-blue-300"
+            )}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
     </>
   )
 }
