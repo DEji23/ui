@@ -1,144 +1,181 @@
 "use client"
-import { useState } from "react"
-import { notifications as initialNotifications } from "@/lib/data"
-import type { Notification } from "@/lib/data"
+
+import { useState, type ReactNode } from "react"
+import { Notification, SearchNormal1, CloseCircle, Warning2, TickCircle, Timer1 } from "iconsax-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import Link from "next/link"
 
 interface HeaderProps {
   title: string
   subtitle?: string
-  actions?: React.ReactNode
+  action?: ReactNode
 }
 
-export function Header({ title, subtitle, actions }: HeaderProps) {
-  const [open, setOpen] = useState(false)
-  const [notes, setNotes] = useState<Notification[]>(initialNotifications)
+type NotifType = "alert" | "warning" | "success" | "info"
+interface Notif { id: string; type: NotifType; title: string; body: string; time: string; read: boolean }
 
-  const unread = notes.filter((n) => !n.read).length
+const INITIAL_NOTIFS: Notif[] = [
+  { id: "n1", type: "alert", title: "No-show flagged", body: "Emeka Obi hasn't accepted his morning shift", time: "2 min ago", read: false },
+  { id: "n2", type: "warning", title: "Inspection overdue — KJA-004", body: "Pre-trip inspection is 3 days overdue", time: "1 hr ago", read: false },
+  { id: "n3", type: "success", title: "Revenue target reached", body: "Today's collections exceeded ₦450,000", time: "3 hrs ago", read: true },
+  { id: "n4", type: "warning", title: "Low fuel — KJA-002", body: "Fuel level at 18%. Schedule refuel before next trip.", time: "5 hrs ago", read: true },
+  { id: "n5", type: "info", title: "New leave request", body: "Adewale Suleiman submitted annual leave (3 days)", time: "Yesterday", read: true },
+]
 
-  const markAll = () => setNotes(notes.map((n) => ({ ...n, read: true })))
-  const markOne = (id: string) => setNotes(notes.map((n) => n.id === id ? { ...n, read: true } : n))
+function NotifIcon({ type }: { type: NotifType }) {
+  if (type === "alert") return <Warning2 size={14} color="#f87171" variant="Bold" />
+  if (type === "warning") return <Warning2 size={14} color="#f59e0b" variant="Bold" />
+  if (type === "success") return <TickCircle size={14} color="#34d399" variant="Bold" />
+  return <Notification size={14} color="#60a5fa" variant="Bold" />
+}
 
-  const typeIcon: Record<Notification["type"], string> = {
-    alert: "⚠",
-    dispatch: "🚌",
-    leave: "📅",
-    reconciliation: "₦",
-    system: "ℹ",
+export function Header({ title, subtitle, action }: HeaderProps) {
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const [notifs, setNotifs] = useState<Notif[]>(INITIAL_NOTIFS)
+
+  const unreadCount = notifs.filter((n) => !n.read).length
+
+  function markAllRead() {
+    setNotifs((n) => n.map((x) => ({ ...x, read: true })))
   }
 
-  const typeColor: Record<Notification["type"], string> = {
-    alert: "text-red-400",
-    dispatch: "text-amber-400",
-    leave: "text-blue-400",
-    reconciliation: "text-emerald-400",
-    system: "text-white/40",
+  function markRead(id: string) {
+    setNotifs((n) => n.map((x) => x.id === id ? { ...x, read: true } : x))
   }
 
   return (
     <>
-      <header className="fixed left-[220px] right-0 top-0 h-14 bg-[#0c0d0f]/95 backdrop-blur-sm border-b border-white/6 flex items-center px-6 z-20">
-        <div className="flex-1">
-          <h1 className="text-base font-semibold text-white leading-none">{title}</h1>
-          {subtitle && <p className="text-xs text-white/40 mt-0.5">{subtitle}</p>}
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.06] bg-[#09090b]/90 px-6 backdrop-blur-sm">
+        <div className="flex-1 min-w-0 mr-4">
+          {searchOpen ? (
+            <Input
+              autoFocus
+              placeholder="Search drivers, buses, routes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") { setSearchOpen(false); setSearch("") } }}
+              className="max-w-xs h-7 text-xs"
+            />
+          ) : (
+            <>
+              <h1 className="text-sm font-semibold text-zinc-100">{title}</h1>
+              {subtitle && <p className="text-xs text-zinc-600 mt-0.5">{subtitle}</p>}
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          {actions}
-          {/* Notification bell */}
-          <button
-            onClick={() => setOpen(true)}
-            className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/8 text-white/50 hover:text-white transition-all"
+        <div className="flex items-center gap-1.5 shrink-0">
+          {action}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => { setSearchOpen((s) => !s); setSearch("") }}
+            className={cn(searchOpen && "text-amber-400 bg-amber-500/10")}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5">
-              <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            {unread > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full">
-                {unread}
-              </span>
+            <SearchNormal1 size={15} color="currentColor" />
+          </Button>
+          <Button variant="ghost" size="icon-sm" className="relative" onClick={() => setNotifOpen(true)}>
+            <Notification size={15} color="currentColor" variant="Linear" />
+            {unreadCount > 0 && (
+              <span
+                className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-500"
+                style={{ boxShadow: "0 0 4px #f59e0b" }}
+              />
             )}
-          </button>
+          </Button>
         </div>
       </header>
 
-      {/* Notification Drawer */}
-      <>
-        <div
-          className={cn(
-            "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-200",
-            open ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}
-          onClick={() => setOpen(false)}
-        />
-        <div
-          className={cn(
-            "fixed right-0 top-0 h-full w-[380px] z-50 bg-[#14151a] border-l border-white/8 shadow-2xl transition-transform duration-300 flex flex-col",
-            open ? "translate-x-0" : "translate-x-full"
-          )}
-        >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Notifications</h2>
-              {unread > 0 && <p className="text-xs text-white/40 mt-0.5">{unread} unread</p>}
-            </div>
-            <div className="flex items-center gap-2">
-              {unread > 0 && (
-                <button onClick={markAll} className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
-                  Mark all read
-                </button>
-              )}
-              <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white transition-colors ml-2">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M10 4L4 10M4 4l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {notes.length === 0 && (
-              <div className="flex items-center justify-center h-40 text-white/30 text-sm">No notifications</div>
+      {/* Notifications drawer backdrop */}
+      <div
+        className={cn(
+          "fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm transition-opacity duration-300",
+          notifOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setNotifOpen(false)}
+      />
+
+      {/* Notifications drawer */}
+      <div
+        className={cn(
+          "fixed top-0 right-0 z-[101] h-full w-[380px] bg-[#0f1011] border-l border-white/[0.07] shadow-2xl flex flex-col transition-transform duration-300 ease-out",
+          notifOpen ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-zinc-100">Notifications</p>
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
+                {unreadCount}
+              </span>
             )}
-            {notes.map((n) => (
-              <div
-                key={n.id}
-                className={cn(
-                  "px-5 py-4 border-b border-white/5 cursor-pointer hover:bg-white/3 transition-colors",
-                  !n.read && "bg-white/3"
-                )}
-                onClick={() => markOne(n.id)}
+          </div>
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                className="text-[11px] text-zinc-500 hover:text-zinc-300 px-2 py-1 rounded transition-colors"
               >
-                <div className="flex items-start gap-3">
-                  <span className={cn("text-base mt-0.5 shrink-0", typeColor[n.type])}>
-                    {typeIcon[n.type]}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={cn("text-xs font-semibold", !n.read ? "text-white" : "text-white/60")}>
-                        {n.title}
-                      </p>
-                      {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
-                    </div>
-                    <p className="text-xs text-white/40 mt-0.5 leading-relaxed">{n.message}</p>
-                    <p className="text-[10px] text-white/25 mt-1">
-                      {new Date(n.timestamp).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                </div>
-                {n.link && (
-                  <Link
-                    href={n.link}
-                    className="mt-2 ml-7 text-[10px] text-amber-400/70 hover:text-amber-400 transition-colors"
-                    onClick={() => setOpen(false)}
-                  >
-                    View →
-                  </Link>
-                )}
-              </div>
-            ))}
+                Mark all read
+              </button>
+            )}
+            <button
+              onClick={() => setNotifOpen(false)}
+              className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+            >
+              <CloseCircle size={16} color="currentColor" variant="Linear" />
+            </button>
           </div>
         </div>
-      </>
+
+        <div className="flex-1 overflow-y-auto">
+          {notifs.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-zinc-600 text-sm">No notifications</div>
+          ) : (
+            <div className="divide-y divide-white/[0.04]">
+              {notifs.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => markRead(n.id)}
+                  className={cn(
+                    "w-full text-left flex gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors",
+                    !n.read && "bg-white/[0.015]"
+                  )}
+                >
+                  <div className={cn(
+                    "mt-0.5 h-6 w-6 rounded-full flex items-center justify-center shrink-0",
+                    n.type === "alert" ? "bg-red-500/10" :
+                    n.type === "warning" ? "bg-amber-500/10" :
+                    n.type === "success" ? "bg-emerald-500/10" : "bg-blue-500/10"
+                  )}>
+                    <NotifIcon type={n.type} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={cn("text-xs font-semibold leading-snug", n.read ? "text-zinc-400" : "text-zinc-100")}>
+                        {n.title}
+                      </p>
+                      {!n.read && <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />}
+                    </div>
+                    <p className="text-[11px] text-zinc-600 mt-0.5 leading-snug">{n.body}</p>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <Timer1 size={10} color="#52525b" variant="Linear" />
+                      <p className="text-[10px] text-zinc-600">{n.time}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t border-white/[0.06] shrink-0">
+          <p className="text-[11px] text-zinc-600 text-center">Showing last 5 notifications</p>
+        </div>
+      </div>
     </>
   )
 }

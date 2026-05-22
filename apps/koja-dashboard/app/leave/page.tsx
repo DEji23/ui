@@ -1,22 +1,47 @@
 "use client"
-import { useState, useRef } from "react"
+
+import { useState } from "react"
 import { Header } from "@/components/layout/header"
-import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Avatar } from "@/components/ui/avatar"
 import { Dialog } from "@/components/ui/dialog"
-import { ToastContainer, type Toast } from "@/components/ui/toast"
-import { leaveRequests as initial, type LeaveRequest, type LeaveStatus } from "@/lib/data"
-import { formatDate, cn } from "@/lib/utils"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import { leaveRequests as initial, type LeaveRequest } from "@/lib/data"
+import { Calendar, TickCircle, CloseCircle, Timer1 } from "iconsax-react"
 
+const leaveTypeStyle: Record<LeaveRequest["type"], string> = {
+  annual: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  sick: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
+  emergency: "text-red-400 bg-red-500/10 border-red-500/20",
+  personal: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+}
+
+const leaveTypeLabels: Record<LeaveRequest["type"], string> = {
+  annual: "Annual Leave",
+  sick: "Sick Leave",
+  emergency: "Emergency",
+  personal: "Personal",
+}
+
+function statusBadge(status: LeaveRequest["status"]) {
+  switch (status) {
+    case "approved": return <Badge variant="success">Approved</Badge>
+    case "declined": return <Badge variant="destructive">Declined</Badge>
+    case "pending": return <Badge variant="default">Pending</Badge>
+    case "modified": return <Badge variant="warning">Modified</Badge>
+    default: return null
+  }
+}
+
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+}
+
+type Toast = { id: number; message: string; type: "success" | "error" | "info" }
 type DialogMode = "approve" | "decline" | null
-
-const typeBadge: Record<string, "green" | "red" | "yellow" | "blue" | "amber"> = {
-  annual: "blue", sick: "yellow", emergency: "red", maternity: "amber",
-}
-const statusBadge: Record<LeaveStatus, "green" | "red" | "yellow"> = {
-  approved: "green", declined: "red", pending: "yellow",
-}
 
 export default function LeavePage() {
   const [requests, setRequests] = useState<LeaveRequest[]>(initial)
@@ -24,158 +49,187 @@ export default function LeavePage() {
   const [target, setTarget] = useState<LeaveRequest | null>(null)
   const [declineReason, setDeclineReason] = useState("")
   const [toasts, setToasts] = useState<Toast[]>([])
-  const counterRef = useRef(0)
 
-  const toast = (message: string, type: Toast["type"] = "success") => {
-    const id = ++counterRef.current
+  function addToast(message: string, type: Toast["type"] = "success") {
+    const id = Date.now()
     setToasts((t) => [...t, { id, message, type }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }
 
-  const pending = requests.filter((r) => r.status === "pending")
-  const history = requests.filter((r) => r.status !== "pending")
+  function openApprove(req: LeaveRequest) {
+    setTarget(req); setDialogMode("approve")
+  }
 
-  const handleApprove = () => {
+  function openDecline(req: LeaveRequest) {
+    setTarget(req); setDeclineReason(""); setDialogMode("decline")
+  }
+
+  function handleApprove() {
     if (!target) return
-    setRequests((r) => r.map((x) => x.id === target.id ? { ...x, status: "approved" as LeaveStatus } : x))
-    toast(`Leave approved for ${target.driver.split(" ")[0]}`)
+    setRequests((r) => r.map((x) => x.id === target.id ? { ...x, status: "approved" } : x))
+    addToast(`Leave approved for ${target.driver}`)
     setDialogMode(null)
   }
 
-  const handleDecline = () => {
+  function handleDecline() {
     if (!target) return
-    setRequests((r) => r.map((x) => x.id === target.id ? { ...x, status: "declined" as LeaveStatus, declineReason } : x))
-    toast(`Leave declined for ${target.driver.split(" ")[0]}`, "info")
+    setRequests((r) => r.map((x) => x.id === target.id ? { ...x, status: "declined", reason: declineReason || "Declined by fleet manager" } : x))
+    addToast(`Leave declined for ${target.driver}`, "error")
     setDialogMode(null)
-    setDeclineReason("")
   }
+
+  const pending = requests.filter((l) => l.status === "pending")
+
+  const summary = [
+    { label: "Pending", count: requests.filter((l) => l.status === "pending").length, iconColor: "#f59e0b", bg: "bg-amber-500/10", Icon: Timer1 },
+    { label: "Approved", count: requests.filter((l) => l.status === "approved").length, iconColor: "#34d399", bg: "bg-emerald-500/10", Icon: TickCircle },
+    { label: "Declined", count: requests.filter((l) => l.status === "declined").length, iconColor: "#f87171", bg: "bg-red-500/10", Icon: CloseCircle },
+    { label: "On Leave Today", count: requests.filter((l) => l.status === "approved").length, iconColor: "#60a5fa", bg: "bg-blue-500/10", Icon: Calendar },
+  ]
 
   return (
-    <div className="pt-14">
-      <Header
-        title="Leave Requests"
-        subtitle={`${pending.length} pending · ${requests.filter((r) => r.status === "approved").length} approved`}
-      />
+    <>
+      <Header title="Leave Requests" subtitle={`${pending.length} pending approval`} />
+      <main className="flex-1 p-6 space-y-6">
+        <div className="grid grid-cols-4 gap-4">
+          {summary.map((s) => (
+            <div key={s.label} className="bg-[#111214] border border-white/[0.07] rounded-xl p-4 flex items-center gap-3">
+              <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", s.bg)}>
+                <s.Icon size={16} color={s.iconColor} variant="Bold" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-zinc-100">{s.count}</p>
+                <p className="text-xs text-zinc-500">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
 
-      <div className="p-6 space-y-6">
-        {/* Pending Requests */}
         {pending.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
-              Pending Approval ({pending.length})
-            </h3>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Pending Approval</p>
             <div className="space-y-3">
               {pending.map((req) => (
-                <div key={req.id} className="bg-[#141518] border border-amber-500/20 rounded-xl p-4">
-                  <div className="flex items-start justify-between mb-3">
+                <div key={req.id} className="bg-[#111214] border border-amber-500/20 bg-amber-500/[0.03] rounded-xl p-5">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400 font-bold text-sm">
-                        {req.driver.split(" ").map((n) => n[0]).join("")}
-                      </div>
+                      <Avatar name={req.driver} size="md" />
                       <div>
-                        <div className="text-sm font-semibold text-white">{req.driver}</div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant={typeBadge[req.type]} className="text-[9px]">{req.type}</Badge>
-                          <span className="text-xs text-white/40">{req.days} day{req.days !== 1 ? "s" : ""}</span>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-zinc-100">{req.driver}</p>
+                          <span className="text-xs text-zinc-600">{req.driverCode}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border", leaveTypeStyle[req.type])}>
+                            {leaveTypeLabels[req.type]}
+                          </span>
+                          <div className="flex items-center gap-1 text-xs text-zinc-500">
+                            <Calendar size={11} color="currentColor" variant="Linear" />
+                            <span>{fmtDate(req.from)} – {fmtDate(req.to)}</span>
+                          </div>
+                          <span className="text-xs text-zinc-600">{req.affectedDuties} duties affected</span>
                         </div>
                       </div>
                     </div>
-                    {req.dutiesAffected > 1 && (
-                      <Badge variant="yellow" className="text-[9px]">⚠ {req.dutiesAffected} duties affected</Badge>
+                    <div className="flex items-center gap-2">
+                      <Button variant="destructive" size="sm" onClick={() => openDecline(req)}>Decline</Button>
+                      <Button size="sm" onClick={() => openApprove(req)}>Approve</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">All Requests</p>
+          <Card>
+            <div className="divide-y divide-white/[0.04]">
+              {requests.map((req) => (
+                <div key={req.id} className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                  <Avatar name={req.driver} size="sm" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-zinc-200">{req.driver}</p>
+                      <span className="text-xs text-zinc-600">{req.driverCode}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border", leaveTypeStyle[req.type])}>
+                        {leaveTypeLabels[req.type]}
+                      </span>
+                      <span className="text-xs text-zinc-500">{fmtDate(req.from)} – {fmtDate(req.to)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {statusBadge(req.status)}
+                    {req.reason && (
+                      <p className="text-[11px] text-zinc-600 mt-1 max-w-[220px] text-right leading-snug">{req.reason}</p>
                     )}
                   </div>
-                  <div className="text-xs text-white/50 mb-1">
-                    {formatDate(req.startDate)} — {formatDate(req.endDate)}
-                  </div>
-                  <p className="text-xs text-white/40 mb-3 italic">&ldquo;{req.reason}&rdquo;</p>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => { setTarget(req); setDialogMode("decline") }}>
-                      Decline
-                    </Button>
-                    <Button size="sm" variant="primary" onClick={() => { setTarget(req); setDialogMode("approve") }}>
-                      Approve Leave
-                    </Button>
-                  </div>
+                  {req.status === "pending" && (
+                    <div className="flex gap-1.5">
+                      <Button variant="ghost" size="sm" onClick={() => openDecline(req)}>Decline</Button>
+                      <Button size="sm" onClick={() => openApprove(req)}>Approve</Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          </Card>
+        </div>
+      </main>
 
-        {/* History Table */}
-        <div>
-          <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">History</h3>
-          <div className="bg-[#141518] border border-white/6 rounded-xl overflow-hidden">
-            <div className="grid grid-cols-[1fr_80px_130px_60px_80px_100px] text-[10px] font-semibold text-white/30 uppercase tracking-wider px-5 py-3 border-b border-white/6">
-              <span>Driver</span><span>Type</span><span>Period</span><span>Days</span><span>Status</span><span>Submitted</span>
-            </div>
-            {history.map((req) => (
-              <div key={req.id} className="grid grid-cols-[1fr_80px_130px_60px_80px_100px] px-5 py-3 border-b border-white/5 last:border-0 items-center hover:bg-white/2">
-                <div>
-                  <div className="text-sm font-medium text-white/80">{req.driver}</div>
-                  {req.declineReason && <div className="text-[10px] text-red-400/60 mt-0.5">{req.declineReason}</div>}
-                </div>
-                <Badge variant={typeBadge[req.type]} className="text-[9px] w-fit">{req.type}</Badge>
-                <span className="text-xs text-white/50">{formatDate(req.startDate)} →</span>
-                <span className="text-xs text-white/50">{req.days}d</span>
-                <Badge variant={statusBadge[req.status]} className="text-[9px] w-fit">{req.status}</Badge>
-                <span className="text-xs text-white/30">{formatDate(req.submittedAt)}</span>
-              </div>
-            ))}
-            {history.length === 0 && (
-              <div className="text-center py-8 text-white/25 text-sm">No history yet</div>
-            )}
+      {/* Approve dialog */}
+      <Dialog
+        open={dialogMode === "approve"}
+        onClose={() => setDialogMode(null)}
+        title="Approve Leave"
+        description={target ? `Approve ${leaveTypeLabels[target.type]} for ${target.driver} from ${fmtDate(target.from)} to ${fmtDate(target.to)}. ${target.affectedDuties} duties will need cover.` : ""}
+      >
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" onClick={() => setDialogMode(null)}>Cancel</Button>
+          <Button size="sm" onClick={handleApprove}>Approve Leave</Button>
+        </div>
+      </Dialog>
+
+      {/* Decline dialog */}
+      <Dialog
+        open={dialogMode === "decline"}
+        onClose={() => setDialogMode(null)}
+        title="Decline Leave Request"
+        description={target ? `Declining leave for ${target.driver}. You may provide a reason which will be shown to the driver.` : ""}
+      >
+        <div className="space-y-4">
+          <Textarea
+            placeholder="Reason for declining (optional)…"
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+            rows={3}
+          />
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setDialogMode(null)}>Cancel</Button>
+            <Button variant="destructive" size="sm" onClick={handleDecline}>Decline Request</Button>
           </div>
         </div>
-      </div>
+      </Dialog>
 
-      {/* Approve Dialog */}
-      <Dialog open={dialogMode === "approve"} onClose={() => setDialogMode(null)} title="Approve Leave" description={target ? `${target.driver} · ${target.type} leave` : ""}>
-        {target && (
-          <div className="space-y-4">
-            <div className="bg-white/4 rounded-lg p-4 space-y-2">
-              {[
-                { label: "Period", value: `${formatDate(target.startDate)} — ${formatDate(target.endDate)}` },
-                { label: "Duration", value: `${target.days} day${target.days !== 1 ? "s" : ""}` },
-                { label: "Reason", value: target.reason },
-                { label: "Duties Affected", value: target.dutiesAffected },
-              ].map((f) => (
-                <div key={f.label} className="flex justify-between text-sm">
-                  <span className="text-white/40">{f.label}</span>
-                  <span className="text-white/80 text-right max-w-[60%]">{f.value}</span>
-                </div>
-              ))}
-            </div>
-            {target.dutiesAffected > 1 && (
-              <div className="bg-yellow-500/8 border border-yellow-500/15 rounded-lg p-3 text-xs text-yellow-300">
-                ⚠ Approving will affect {target.dutiesAffected} scheduled duties. Ensure replacements are assigned.
-              </div>
+      {/* Toasts */}
+      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              "px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-sm",
+              t.type === "success" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+              t.type === "error" && "bg-red-500/10 border-red-500/20 text-red-300",
+              t.type === "info" && "bg-blue-500/10 border-blue-500/20 text-blue-300"
             )}
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1" onClick={() => setDialogMode(null)}>Cancel</Button>
-              <Button variant="primary" className="flex-1" onClick={handleApprove}>Confirm Approval</Button>
-            </div>
+          >
+            {t.message}
           </div>
-        )}
-      </Dialog>
-
-      {/* Decline Dialog */}
-      <Dialog open={dialogMode === "decline"} onClose={() => setDialogMode(null)} title="Decline Leave" description={target ? `${target.driver} · ${target.type} leave` : ""}>
-        {target && (
-          <div className="space-y-4">
-            <div className="text-sm text-white/50">
-              {formatDate(target.startDate)} — {formatDate(target.endDate)} · {target.days} days
-            </div>
-            <Textarea label="Reason for decline (optional)" rows={3} value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} placeholder="Explain why the leave cannot be approved..." />
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1" onClick={() => setDialogMode(null)}>Cancel</Button>
-              <Button variant="danger" className="flex-1" onClick={handleDecline}>Decline Leave</Button>
-            </div>
-          </div>
-        )}
-      </Dialog>
-
-      <ToastContainer toasts={toasts} />
-    </div>
+        ))}
+      </div>
+    </>
   )
 }

@@ -5,18 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatNGN(amount: number) {
-  return `₦${(amount / 1000).toFixed(0)}K`
-}
-
-export function formatNGNFull(amount: number) {
+export function formatNGN(amount: number): string {
+  if (amount >= 1_000_000) return `₦${(amount / 1_000_000).toFixed(1)}M`
+  if (amount >= 1_000) return `₦${(amount / 1_000).toFixed(0)}K`
   return `₦${amount.toLocaleString("en-NG")}`
 }
 
-export function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-NG", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
+export function formatNGNFull(amount: number): string {
+  return `₦${amount.toLocaleString("en-NG")}`
 }
