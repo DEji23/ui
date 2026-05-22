@@ -1,8 +1,6 @@
 "use client"
-
-import * as React from "react"
+import { useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { CloseCircle } from "iconsax-react"
 
 interface DialogProps {
   open: boolean
@@ -14,49 +12,32 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onClose, title, description, children, className }: DialogProps) {
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
-    if (open) {
-      document.body.style.overflow = "hidden"
-      window.addEventListener("keydown", onKey)
-    } else {
-      document.body.style.overflow = ""
-    }
-    return () => {
-      document.body.style.overflow = ""
-      window.removeEventListener("keydown", onKey)
-    }
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
   }, [open, onClose])
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div
         className={cn(
-          "relative z-10 w-full max-w-md bg-[#16171a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden",
+          "relative z-10 w-full max-w-md mx-4 rounded-xl bg-[#16171a] border border-white/8 shadow-2xl",
           className
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || description) && (
-          <div className="flex items-start justify-between px-6 pt-6 pb-0">
-            <div>
-              {title && <h2 className="text-[15px] font-semibold text-zinc-100">{title}</h2>}
-              {description && (
-                <p className="text-sm text-zinc-500 mt-1.5 leading-relaxed">{description}</p>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="ml-4 shrink-0 p-1 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/5 transition-colors"
-            >
-              <CloseCircle size={18} color="currentColor" variant="Linear" />
-            </button>
+          <div className="px-6 pt-6 pb-4 border-b border-white/8">
+            {title && <h2 className="text-base font-semibold text-white">{title}</h2>}
+            {description && <p className="text-sm text-white/50 mt-1">{description}</p>}
           </div>
         )}
-        <div className={cn("p-6", (title || description) && "pt-4")}>{children}</div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   )

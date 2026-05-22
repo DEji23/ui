@@ -1,261 +1,167 @@
 "use client"
-
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Header } from "@/components/layout/header"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Dialog } from "@/components/ui/dialog"
+import { ToastContainer, type Toast } from "@/components/ui/toast"
+import { alerts as initial, type Alert, type AlertSeverity } from "@/lib/data"
 import { cn } from "@/lib/utils"
-import { alerts as initialAlerts, type Alert } from "@/lib/data"
-import { Danger, Warning2, InfoCircle, TickCircle, Location, Timer1 } from "iconsax-react"
 
-function SeverityIcon({ severity }: { severity: Alert["severity"] }) {
-  if (severity === "critical") return <Danger size={20} color="#f87171" variant="Bold" />
-  if (severity === "warning") return <Warning2 size={20} color="#fbbf24" variant="Bold" />
-  return <InfoCircle size={20} color="#60a5fa" variant="Bold" />
+const severityConfig: Record<AlertSeverity, { badge: "red" | "yellow" | "gray"; bar: string }> = {
+  critical: { badge: "red", bar: "bg-red-500" },
+  high: { badge: "yellow", bar: "bg-yellow-500" },
+  medium: { badge: "gray", bar: "bg-white/25" },
 }
-
-function severityBadge(severity: Alert["severity"]) {
-  if (severity === "critical") return <Badge variant="destructive">Critical</Badge>
-  if (severity === "warning") return <Badge variant="warning">Warning</Badge>
-  return <Badge variant="info">Info</Badge>
-}
-
-const typeLabels: Record<Alert["type"], string> = {
-  breakdown: "Breakdown",
-  late_start: "Late Start",
-  code_red: "Code Red",
-  inspection_fail: "Inspection Fail",
-  cash_discrepancy: "Cash Issue",
-  no_show: "No-Show",
-}
-
-const ACTION_OPTIONS = [
-  "Dispatch replacement bus",
-  "Contact driver directly",
-  "Escalate to operations manager",
-  "Mark as resolved",
-  "Request police assistance",
-]
-
-const filterOptions = ["All", "Critical", "Warning", "Acknowledged"] as const
-type AlertFilter = (typeof filterOptions)[number]
-type Toast = { id: number; message: string; type: "success" | "error" | "info" }
 
 export default function AlertsPage() {
-  const [filter, setFilter] = useState<AlertFilter>("All")
-  const [alertList, setAlertList] = useState<Alert[]>(initialAlerts)
+  const [alertList, setAlertList] = useState<Alert[]>(initial)
+  const [filter, setFilter] = useState<AlertSeverity | "all" | "unacked">("unacked")
   const [respondTarget, setRespondTarget] = useState<Alert | null>(null)
   const [actionType, setActionType] = useState("")
   const [notes, setNotes] = useState("")
   const [toasts, setToasts] = useState<Toast[]>([])
+  const counterRef = useRef(0)
 
-  function addToast(message: string, type: Toast["type"] = "success") {
-    const id = Date.now()
+  const toast = (message: string, type: Toast["type"] = "success") => {
+    const id = ++counterRef.current
     setToasts((t) => [...t, { id, message, type }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }
 
-  const criticalUnack = alertList.filter((a) => a.severity === "critical" && !a.acknowledged).length
-
   const filtered = alertList.filter((a) => {
-    if (filter === "Critical") return a.severity === "critical"
-    if (filter === "Warning") return a.severity === "warning"
-    if (filter === "Acknowledged") return a.acknowledged
-    return true
+    if (filter === "unacked") return !a.acknowledged
+    if (filter === "all") return true
+    return a.severity === filter
   })
 
-  function handleAcknowledge(id: string) {
-    setAlertList((list) => list.map((a) => a.id === id ? { ...a, acknowledged: true } : a))
-    addToast("Alert acknowledged", "info")
+  const acknowledge = (id: string) => {
+    setAlertList((al) => al.map((a) => a.id === id ? { ...a, acknowledged: true, acknowledgedBy: "Fleet Manager", acknowledgedAt: new Date().toISOString() } : a))
+    toast("Alert acknowledged", "info")
   }
 
-  function handleRespond() {
+  const handleRespond = () => {
     if (!respondTarget || !actionType) return
-    setAlertList((list) =>
-      list.map((a) => a.id === respondTarget.id ? { ...a, acknowledged: true } : a)
-    )
-    addToast(`Response logged: ${actionType}`)
+    acknowledge(respondTarget.id)
+    setAlertList((al) => al.map((a) => a.id === respondTarget.id ? { ...a, acknowledged: true } : a))
+    toast(`Response logged: ${actionType}`)
     setRespondTarget(null)
     setActionType("")
     setNotes("")
   }
 
-  function openRespond(alert: Alert) {
-    setRespondTarget(alert)
-    setActionType("")
-    setNotes("")
-  }
+  const unacked = alertList.filter((a) => !a.acknowledged).length
+  const critical = alertList.filter((a) => a.severity === "critical" && !a.acknowledged).length
 
   return (
-    <>
+    <div className="pt-14">
       <Header
-        title="Alerts & Incidents"
-        subtitle={
-          criticalUnack > 0
-            ? `${criticalUnack} critical alert${criticalUnack > 1 ? "s" : ""} require attention`
-            : "All clear — no active critical alerts"
-        }
+        title="Alerts"
+        subtitle={`${unacked} unacknowledged · ${critical} critical`}
       />
-      <main className="flex-1 p-6 space-y-5">
-        <div className="flex items-center gap-1.5">
-          {filterOptions.map((f) => (
+
+      <div className="p-6">
+        {/* Filter tabs */}
+        <div className="flex items-center gap-1 mb-5 bg-white/4 rounded-lg p-1 w-fit">
+          {(["unacked", "all", "critical", "high", "medium"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "relative px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
-                filter === f
-                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                  : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300 border-transparent"
+                "px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize",
+                filter === f ? "bg-white/12 text-white" : "text-white/40 hover:text-white/70"
               )}
             >
-              {f}
-              {f === "Critical" && criticalUnack > 0 && (
-                <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                  {criticalUnack}
-                </span>
-              )}
+              {f === "unacked" ? "Unacknowledged" : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
 
-        <div className="space-y-3">
-          {filtered.length === 0 && (
-            <div className="py-20 text-center text-zinc-600">
-              <TickCircle size={36} color="currentColor" className="mx-auto mb-3 opacity-30" variant="Linear" />
-              <p className="text-sm">No alerts in this category</p>
-            </div>
-          )}
-          {filtered.map((alert) => (
-            <Card
-              key={alert.id}
-              className={cn(
-                alert.severity === "critical" && !alert.acknowledged ? "border-red-500/25 bg-red-500/[0.04]" :
-                alert.severity === "warning" && !alert.acknowledged ? "border-yellow-500/25 bg-yellow-500/[0.04]" : "",
-                alert.acknowledged && "opacity-60"
-              )}
-            >
-              <CardContent className="p-5">
-                <div className="flex items-start gap-4">
-                  <div className="mt-0.5 shrink-0">
-                    <SeverityIcon severity={alert.severity} />
-                  </div>
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-xl mx-auto mb-3">✓</div>
+            <p className="text-white/40 text-sm">All clear — no alerts in this view</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((alert) => {
+              const sc = severityConfig[alert.severity]
+              return (
+                <div
+                  key={alert.id}
+                  className={cn(
+                    "bg-[#141518] border rounded-xl p-4 flex items-start gap-3 transition-all",
+                    alert.acknowledged ? "border-white/5 opacity-60" : "border-white/8 hover:border-white/12"
+                  )}
+                >
+                  <div className={`w-0.5 h-full min-h-[40px] rounded-full shrink-0 ${sc.bar}`} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <p className="text-sm font-semibold text-zinc-100">{alert.title}</p>
-                      {severityBadge(alert.severity)}
-                      <Badge variant="muted">{typeLabels[alert.type]}</Badge>
-                      {alert.acknowledged && <Badge variant="muted">Acknowledged</Badge>}
-                    </div>
-                    <p className="text-sm text-zinc-400 leading-relaxed">{alert.description}</p>
-                    <div className="flex flex-wrap items-center gap-4 mt-3">
-                      <div className="flex items-center gap-1.5 text-xs text-zinc-600">
-                        <Timer1 size={12} color="currentColor" variant="Linear" />
-                        <span>{alert.timestamp}</span>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white/90">{alert.title}</span>
+                        <Badge variant={sc.badge} className="text-[9px]">{alert.severity}</Badge>
                       </div>
-                      {alert.location && (
-                        <div className="flex items-center gap-1.5 text-xs text-zinc-600">
-                          <Location size={12} color="currentColor" variant="Linear" />
-                          <span>{alert.location}</span>
+                      <span className="text-xs text-white/30 shrink-0">
+                        {new Date(alert.timestamp).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/50 mb-3">{alert.message}</p>
+                    <div className="flex items-center gap-2">
+                      {!alert.acknowledged ? (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => acknowledge(alert.id)}>
+                            Acknowledge
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => { setRespondTarget(alert); setActionType(""); setNotes("") }}>
+                            Respond
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="text-[10px] text-white/30">
+                          Acknowledged by {alert.acknowledgedBy || "Fleet Manager"} ·{" "}
+                          {alert.acknowledgedAt ? new Date(alert.acknowledgedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" }) : ""}
                         </div>
                       )}
-                      {alert.driver && <span className="text-xs text-zinc-600">Driver: {alert.driver}</span>}
-                      {alert.bus && <span className="text-xs text-zinc-600">Bus: {alert.bus}</span>}
                     </div>
                   </div>
-                  {!alert.acknowledged && (
-                    <div className="flex gap-2 shrink-0">
-                      <Button variant="outline" size="sm" onClick={() => handleAcknowledge(alert.id)}>
-                        Acknowledge
-                      </Button>
-                      <Button size="sm" variant={alert.severity === "critical" ? "destructive" : "default"} onClick={() => openRespond(alert)}>
-                        Respond
-                      </Button>
-                    </div>
-                  )}
-                  {alert.acknowledged && (
-                    <Button variant="ghost" size="sm" onClick={() => openRespond(alert)}>View</Button>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </main>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Respond dialog */}
+      {/* Respond Dialog */}
       <Dialog
         open={!!respondTarget}
         onClose={() => setRespondTarget(null)}
-        title={respondTarget ? `Respond — ${respondTarget.title}` : ""}
-        description={respondTarget?.description}
-        className="max-w-lg"
+        title="Respond to Alert"
+        description={respondTarget?.title}
       >
-        {respondTarget && (
-          <div className="space-y-4">
-            <div className={cn(
-              "rounded-lg p-3 text-xs",
-              respondTarget.severity === "critical" ? "bg-red-500/10 border border-red-500/20 text-red-300" :
-              respondTarget.severity === "warning" ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-300" :
-              "bg-blue-500/10 border border-blue-500/20 text-blue-300"
-            )}>
-              <div className="flex gap-3">
-                {respondTarget.driver && <span><span className="text-zinc-500">Driver:</span> {respondTarget.driver}</span>}
-                {respondTarget.bus && <span><span className="text-zinc-500">Bus:</span> {respondTarget.bus}</span>}
-                {respondTarget.location && <span><span className="text-zinc-500">Location:</span> {respondTarget.location}</span>}
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1.5">Action</label>
-              <Select value={actionType} onChange={(e) => setActionType(e.target.value)}>
-                <option value="">Select action…</option>
-                {ACTION_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
-              </Select>
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1.5">Notes <span className="text-zinc-700">(optional)</span></label>
-              <Textarea
-                placeholder="Add context, decisions, or follow-up steps…"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setRespondTarget(null)}>Cancel</Button>
-              <Button
-                size="sm"
-                variant={respondTarget.severity === "critical" ? "destructive" : "default"}
-                onClick={handleRespond}
-                disabled={!actionType}
-              >
-                Log Response
-              </Button>
-            </div>
+        <div className="space-y-4">
+          <div className="bg-white/4 rounded-lg p-3 text-xs text-white/50">{respondTarget?.message}</div>
+          <Select label="Action Taken *" value={actionType} onChange={(e) => setActionType(e.target.value)}>
+            <option value="">— Select action —</option>
+            <option value="dispatched_replacement">Dispatched Replacement</option>
+            <option value="contacted_driver">Contacted Driver</option>
+            <option value="contacted_mechanic">Contacted Mechanic</option>
+            <option value="escalated">Escalated to Management</option>
+            <option value="monitoring">Monitoring Situation</option>
+            <option value="resolved">Marked as Resolved</option>
+          </Select>
+          <Textarea label="Notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add any notes about the response..." />
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setRespondTarget(null)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={handleRespond} disabled={!actionType}>
+              Log Response
+            </Button>
           </div>
-        )}
+        </div>
       </Dialog>
 
-      {/* Toasts */}
-      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-sm",
-              t.type === "success" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
-              t.type === "error" && "bg-red-500/10 border-red-500/20 text-red-300",
-              t.type === "info" && "bg-blue-500/10 border-blue-500/20 text-blue-300"
-            )}
-          >
-            {t.message}
-          </div>
-        ))}
-      </div>
-    </>
+      <ToastContainer toasts={toasts} />
+    </div>
   )
 }

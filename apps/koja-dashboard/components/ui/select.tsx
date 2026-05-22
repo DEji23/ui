@@ -1,28 +1,33 @@
-import * as React from "react"
+"use client"
 import { cn } from "@/lib/utils"
+import { SelectHTMLAttributes, forwardRef } from "react"
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
+interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string
+  error?: string
+}
 
-export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, children, ...props }, ref) => (
-    <select
-      ref={ref}
-      className={cn(
-        "flex h-9 w-full rounded-lg border border-white/10 bg-[#1a1b1e] px-3 py-1 text-sm text-zinc-200 outline-none transition-colors focus:border-amber-500/50 cursor-pointer",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </select>
-  )
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, label, error, children, ...props }, ref) => {
+    return (
+      <div className="flex flex-col gap-1.5 w-full">
+        {label && (
+          <label className="text-xs font-medium text-white/60">{label}</label>
+        )}
+        <select
+          ref={ref}
+          className={cn(
+            "h-9 w-full rounded-lg bg-white/5 border border-white/10 px-3 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all appearance-none cursor-pointer",
+            error && "border-red-500/50",
+            className
+          )}
+          {...props}
+        >
+          {children}
+        </select>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+      </div>
+    )
+  }
 )
 Select.displayName = "Select"
-
-export function SelectOption({ value, children }: { value: string; children: React.ReactNode }) {
-  return (
-    <option value={value} className="bg-[#16171a] text-zinc-200">
-      {children}
-    </option>
-  )
-}

@@ -1,317 +1,291 @@
 "use client"
-
-import { useState } from "react"
+import { useState, useRef, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { Header } from "@/components/layout/header"
-import { Card, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Avatar } from "@/components/ui/avatar"
-import { Dialog } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog } from "@/components/ui/dialog"
+import { Sheet } from "@/components/ui/sheet"
+import { ToastContainer, type Toast } from "@/components/ui/toast"
+import { dispatchPlans as initial, drivers, buses, type DispatchPlan } from "@/lib/data"
 import { cn } from "@/lib/utils"
-import { dispatchPlans, drivers, buses, type DispatchPlan } from "@/lib/data"
-import { Add, Send2, TickCircle, CloseCircle, Warning2 } from "iconsax-react"
 
-const ROUTES = [
-  "Lagos Island – Oshodi",
-  "Oshodi – Ikeja",
-  "Lagos Island – Lekki",
-  "Berger – Oshodi",
-  "Ojota – CMS",
-]
+type DialogMode = "new" | "edit" | "replace" | "cancel" | "delay" | null
 
-type Toast = { id: number; message: string; type: "success" | "error" | "info" }
-type DialogMode = "new" | "edit" | "replace" | null
-
-function dispatchStatusBadge(status: string) {
-  switch (status) {
-    case "active": return <Badge variant="success">Active</Badge>
-    case "completed": return <Badge variant="muted">Completed</Badge>
-    case "no_show": return <Badge variant="destructive">No-Show</Badge>
-    case "pending": return <Badge variant="default">Pending</Badge>
-    default: return null
-  }
+const statusBadge: Record<string, "green" | "gray" | "red" | "yellow" | "amber"> = {
+  active: "green", pending: "gray", no_show: "red", complete: "amber", cancelled: "red",
 }
 
-export default function DispatchPage() {
-  const [plans, setPlans] = useState<DispatchPlan[]>(dispatchPlans)
+function DispatchInner() {
+  const searchParams = useSearchParams()
+  const [plans, setPlans] = useState<DispatchPlan[]>(initial)
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
   const [editTarget, setEditTarget] = useState<DispatchPlan | null>(null)
-  const [toasts, setToasts] = useState<Toast[]>([])
-
-  // Form state
   const [formDriver, setFormDriver] = useState("")
   const [formBus, setFormBus] = useState("")
   const [formRoute, setFormRoute] = useState("")
+  const [formDep, setFormDep] = useState("07:00")
   const [formTrips, setFormTrips] = useState("3")
-  const [formDep, setFormDep] = useState("06:00")
   const [replaceDriver, setReplaceDriver] = useState("")
+  const [cancelReason, setCancelReason] = useState("")
+  const [delayTime, setDelayTime] = useState("")
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const counterRef = useRef(0)
 
-  function addToast(message: string, type: Toast["type"] = "success") {
-    const id = Date.now()
+  useEffect(() => {
+    if (searchParams.get("action") === "new") { openNew() }
+  }, [searchParams])
+
+  const toast = (message: string, type: Toast["type"] = "success") => {
+    const id = ++counterRef.current
     setToasts((t) => [...t, { id, message, type }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }
 
-  function openNew() {
-    setFormDriver(""); setFormBus(""); setFormRoute(""); setFormTrips("3"); setFormDep("06:00")
+  const openNew = () => {
     setEditTarget(null)
+    setFormDriver(""); setFormBus(""); setFormRoute(""); setFormDep("07:00"); setFormTrips("3")
     setDialogMode("new")
   }
 
-  function openEdit(plan: DispatchPlan) {
-    setFormDriver(plan.driver); setFormBus(plan.bus); setFormRoute(plan.route)
-    setFormTrips(String(plan.trips)); setFormDep(plan.departure)
+  const openEdit = (plan: DispatchPlan) => {
     setEditTarget(plan)
+    setFormDriver(plan.driverId); setFormBus(plan.busId); setFormRoute(plan.route)
+    setFormDep(plan.departure); setFormTrips(String(plan.trips))
     setDialogMode("edit")
   }
 
-  function openReplace(plan: DispatchPlan) {
-    setEditTarget(plan); setReplaceDriver("")
-    setDialogMode("replace")
+  const openReplace = (plan: DispatchPlan) => {
+    setEditTarget(plan); setReplaceDriver(""); setDialogMode("replace")
   }
 
-  function handleSave() {
-    const driver = drivers.find((d) => d.name === formDriver)
-    if (!formDriver || !formBus || !formRoute) return
-    if (dialogMode === "new") {
-      const newPlan: DispatchPlan = {
-        id: `dp${Date.now()}`,
-        driver: formDriver,
-        driverCode: driver?.code ?? "KJA-00X",
-        bus: formBus,
-        route: formRoute,
-        trips: parseInt(formTrips) || 3,
+  const handleSave = () => {
+    const driver = drivers.find((d) => d.id === formDriver)
+    const bus = buses.find((b) => b.id === formBus)
+    if (editTarget) {
+      setPlans((p) => p.map((x) => x.id === editTarget.id ? {
+        ...x,
+        driver: driver?.name ?? x.driver,
+        driverId: formDriver || x.driverId,
+        bus: formBus || x.bus,
+        busId: formBus || x.busId,
+        route: formRoute || x.route,
         departure: formDep,
+        trips: parseInt(formTrips),
+      } : x))
+      toast("Assignment updated")
+    } else {
+      const newPlan: DispatchPlan = {
+        id: `DIS-${String(plans.length + 1).padStart(3, "0")}`,
+        route: formRoute,
+        driver: driver?.name ?? "TBD",
+        driverId: formDriver,
+        bus: bus?.plateNumber ?? formBus,
+        busId: formBus,
         status: "pending",
+        departure: formDep,
+        trips: parseInt(formTrips),
+        pax: 0,
       }
       setPlans((p) => [...p, newPlan])
-      addToast(`Assignment created for ${formDriver}`)
-    } else if (dialogMode === "edit" && editTarget) {
-      setPlans((p) =>
-        p.map((x) =>
-          x.id === editTarget.id
-            ? { ...x, driver: formDriver, driverCode: driver?.code ?? x.driverCode, bus: formBus, route: formRoute, trips: parseInt(formTrips) || 3, departure: formDep }
-            : x
-        )
-      )
-      addToast(`Assignment updated`, "info")
+      toast("Dispatch duty created")
     }
     setDialogMode(null)
   }
 
-  function handleReplace() {
-    if (!replaceDriver || !editTarget) return
-    const driver = drivers.find((d) => d.name === replaceDriver)
-    setPlans((p) =>
-      p.map((x) =>
-        x.id === editTarget.id
-          ? { ...x, driver: replaceDriver, driverCode: driver?.code ?? x.driverCode, status: "active" }
-          : x
-      )
-    )
-    addToast(`${replaceDriver} assigned as replacement`)
+  const handleReplace = () => {
+    if (!editTarget || !replaceDriver) return
+    const driver = drivers.find((d) => d.id === replaceDriver)
+    setPlans((p) => p.map((x) => x.id === editTarget.id ? {
+      ...x, status: "active", driver: driver?.name ?? x.driver, driverId: replaceDriver,
+    } : x))
+    toast(`Driver replaced: ${driver?.name}`)
     setDialogMode(null)
   }
 
-  function handlePublish() {
-    const pending = plans.filter((p) => p.status === "pending").length
-    setPlans((p) => p.map((x) => (x.status === "pending" ? { ...x, status: "active" } : x)))
-    addToast(pending > 0 ? `${pending} assignment${pending > 1 ? "s" : ""} published` : "All assignments already active")
+  const handleCancel = () => {
+    if (!editTarget) return
+    setPlans((p) => p.map((x) => x.id === editTarget.id ? { ...x, status: "cancelled" } : x))
+    toast("Duty cancelled", "info")
+    setDialogMode(null)
   }
 
-  const activeCount = plans.filter((d) => d.status === "active").length
-  const noShowCount = plans.filter((d) => d.status === "no_show").length
-  const completedCount = plans.filter((d) => d.status === "completed").length
+  const handleDelay = () => {
+    if (!editTarget || !delayTime) return
+    setPlans((p) => p.map((x) => x.id === editTarget.id ? { ...x, departure: delayTime } : x))
+    toast(`Departure updated to ${delayTime}`)
+    setDialogMode(null)
+  }
 
-  const availableDrivers = drivers.filter((d) => d.status !== "blocked" && d.status !== "on_leave")
-  const availableBuses = buses.filter((b) => b.status === "available" || b.status === "active")
+  const handlePublish = () => {
+    const pending = plans.filter((p) => p.status === "pending").length
+    if (pending === 0) { toast("No pending duties to publish", "info"); return }
+    setPlans((p) => p.map((x) => x.status === "pending" ? { ...x, status: "active" } : x))
+    toast(`${pending} ${pending === 1 ? "duty" : "duties"} published successfully`)
+  }
+
+  const availableDrivers = drivers.filter((d) => ["active", "inactive"].includes(d.status))
+  const availableBuses = buses.filter((b) => ["active", "inactive"].includes(b.status))
+  const pendingCount = plans.filter((p) => p.status === "pending").length
+  const activeCount = plans.filter((p) => p.status === "active").length
 
   return (
-    <>
+    <div className="pt-14">
       <Header
         title="Dispatch"
-        subtitle="Today’s plan — Thursday 22 May 2026"
-        action={
-          <div className="flex gap-2 mr-1">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={handlePublish}>
-              <Send2 size={14} color="currentColor" />
-              Publish All
-            </Button>
-            <Button size="sm" className="gap-1.5" onClick={openNew}>
-              <Add size={14} color="currentColor" />
-              New Assignment
-            </Button>
+        subtitle={`${activeCount} active · ${pendingCount} pending · ${new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "short" })}`}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={openNew}>+ New Duty</Button>
+            {pendingCount > 0 && (
+              <Button variant="primary" size="sm" onClick={handlePublish}>
+                Publish All ({pendingCount})
+              </Button>
+            )}
           </div>
         }
       />
-      <main className="flex-1 p-6 space-y-5">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-[#111214] border border-white/[0.07] rounded-xl p-4 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <TickCircle size={16} color="#34d399" variant="Bold" />
+
+      <div className="p-6">
+        {/* Summary cards */}
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {[
+            { label: "Active", count: activeCount, color: "text-emerald-400" },
+            { label: "Pending", count: pendingCount, color: "text-amber-400" },
+            { label: "No Show", count: plans.filter((p) => p.status === "no_show").length, color: "text-red-400" },
+            { label: "Complete", count: plans.filter((p) => p.status === "complete").length, color: "text-white/50" },
+          ].map((s) => (
+            <div key={s.label} className="bg-[#141518] border border-white/6 rounded-xl p-4">
+              <div className={`text-2xl font-bold ${s.color}`}>{s.count}</div>
+              <div className="text-xs text-white/40 mt-0.5">{s.label}</div>
             </div>
-            <div>
-              <p className="text-xl font-bold text-zinc-100">{activeCount}</p>
-              <p className="text-xs text-zinc-500">Active assignments</p>
-            </div>
-          </div>
-          <div className="bg-[#111214] border border-white/[0.07] rounded-xl p-4 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-              <CloseCircle size={16} color="#f87171" variant="Bold" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-zinc-100">{noShowCount}</p>
-              <p className="text-xs text-zinc-500">No-shows flagged</p>
-            </div>
-          </div>
-          <div className="bg-[#111214] border border-white/[0.07] rounded-xl p-4 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Warning2 size={16} color="#f59e0b" variant="Bold" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-zinc-100">{completedCount}</p>
-              <p className="text-xs text-zinc-500">Completed today</p>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <Card>
-          <CardHeader className="px-5 py-4 border-b border-white/[0.05]">
-            <CardTitle>Today’s Assignments</CardTitle>
-          </CardHeader>
-          <div className="grid grid-cols-[2fr_1fr_2fr_1fr_1fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider border-b border-white/[0.04]">
-            <span>Driver</span><span>Bus</span><span>Route</span><span>Trips / Dep.</span><span>Status</span><span></span>
+        {/* Dispatch Table */}
+        <div className="bg-[#141518] border border-white/6 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[1fr_1fr_1fr_80px_80px_140px] text-[10px] font-semibold text-white/30 uppercase tracking-wider px-5 py-3 border-b border-white/6">
+            <span>Route</span><span>Driver</span><span>Bus</span><span>Dep.</span><span>Trips</span><span>Actions</span>
           </div>
-          <div className="divide-y divide-white/[0.04]">
-            {plans.map((plan) => (
-              <div
-                key={plan.id}
-                className={cn(
-                  "grid grid-cols-[2fr_1fr_2fr_1fr_1fr_auto] gap-4 items-center px-5 py-4 hover:bg-white/[0.02] transition-colors",
-                  plan.status === "no_show" && "bg-red-500/[0.03]"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar name={plan.driver} size="sm" />
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">{plan.driver}</p>
-                    <p className="text-xs text-zinc-600">{plan.driverCode}</p>
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-zinc-300">{plan.bus}</p>
-                <p className="text-sm text-zinc-300">{plan.route}</p>
-                <div>
-                  <p className="text-sm text-zinc-300">{plan.trips} trips</p>
-                  <p className="text-xs text-zinc-600">Dep {plan.departure}</p>
-                </div>
-                <div>{dispatchStatusBadge(plan.status)}</div>
-                <div className="flex gap-1.5">
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(plan)}>Edit</Button>
-                  {plan.status === "no_show" && (
-                    <Button variant="destructive" size="sm" onClick={() => openReplace(plan)}>Replace</Button>
-                  )}
-                </div>
+          {plans.map((plan) => (
+            <div key={plan.id} className="grid grid-cols-[1fr_1fr_1fr_80px_80px_140px] px-5 py-3.5 border-b border-white/5 last:border-0 hover:bg-white/2 items-center">
+              <div>
+                <div className="text-sm font-medium text-white/90">{plan.route}</div>
+                <div className="text-[10px] text-white/30 mt-0.5">{plan.id}</div>
               </div>
-            ))}
-          </div>
-        </Card>
-      </main>
+              <div className="flex items-center gap-2">
+                {plan.driver !== "— Unassigned —" ? (
+                  <>
+                    <div className="w-6 h-6 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-400 text-[9px] font-bold shrink-0">
+                      {plan.driver.split(" ").map((n) => n[0]).join("")}
+                    </div>
+                    <span className="text-sm text-white/70">{plan.driver.split(" ")[0]}</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-red-400/60">Unassigned</span>
+                )}
+              </div>
+              <span className="text-sm text-white/60">{plan.bus}</span>
+              <span className="text-sm text-white/60">{plan.departure}</span>
+              <span className="text-sm text-white/60">{plan.trips}</span>
+              <div className="flex items-center gap-1.5">
+                <Badge variant={statusBadge[plan.status]} className="text-[9px]">{plan.status}</Badge>
+                <button
+                  onClick={() => openEdit(plan)}
+                  className="text-[10px] text-amber-400/70 hover:text-amber-400 transition-colors px-1.5 py-1 rounded hover:bg-amber-500/8"
+                >
+                  Edit
+                </button>
+                {plan.status === "no_show" && (
+                  <button onClick={() => openReplace(plan)} className="text-[10px] text-amber-400/70 hover:text-amber-400 transition-colors px-1.5 py-1 rounded hover:bg-amber-500/8">
+                    Replace
+                  </button>
+                )}
+                {plan.status === "pending" && (
+                  <button onClick={() => { setEditTarget(plan); setDialogMode("cancel") }} className="text-[10px] text-red-400/70 hover:text-red-400">
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* New / Edit assignment dialog */}
+      {/* New / Edit Duty Dialog */}
       <Dialog
         open={dialogMode === "new" || dialogMode === "edit"}
         onClose={() => setDialogMode(null)}
-        title={dialogMode === "edit" ? "Edit Assignment" : "New Assignment"}
-        description="Assign a driver and bus to a route for today’s dispatch."
+        title={dialogMode === "new" ? "Create New Duty" : "Edit Assignment"}
+        description={editTarget ? `Editing ${editTarget.route}` : "Assign driver and bus to a route"}
         className="max-w-lg"
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-xs text-zinc-500 mb-1.5">Driver</label>
-            <Select value={formDriver} onChange={(e) => setFormDriver(e.target.value)}>
-              <option value="">Select driver…</option>
-              {availableDrivers.map((d) => (
-                <option key={d.id} value={d.name}>{d.name} ({d.code})</option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className="block text-xs text-zinc-500 mb-1.5">Bus</label>
-            <Select value={formBus} onChange={(e) => setFormBus(e.target.value)}>
-              <option value="">Select bus…</option>
-              {availableBuses.map((b) => (
-                <option key={b.id} value={b.code}>{b.code} — {b.model}</option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className="block text-xs text-zinc-500 mb-1.5">Route</label>
-            <Select value={formRoute} onChange={(e) => setFormRoute(e.target.value)}>
-              <option value="">Select route…</option>
-              {ROUTES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </Select>
-          </div>
+          <Input label="Route" value={formRoute} onChange={(e) => setFormRoute(e.target.value)} placeholder="e.g. Island → Lekki" />
+          <Select label="Assign Driver" value={formDriver} onChange={(e) => setFormDriver(e.target.value)}>
+            <option value="">— Select Driver —</option>
+            {availableDrivers.map((d) => (
+              <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+            ))}
+          </Select>
+          <Select label="Assign Bus" value={formBus} onChange={(e) => setFormBus(e.target.value)}>
+            <option value="">— Select Bus —</option>
+            {availableBuses.map((b) => (
+              <option key={b.id} value={b.id}>{b.plateNumber} — {b.model} ({b.capacity} seats)</option>
+            ))}
+          </Select>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1.5">Trips</label>
-              <Input type="number" min="1" max="6" value={formTrips} onChange={(e) => setFormTrips(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1.5">Departure</label>
-              <Input type="time" value={formDep} onChange={(e) => setFormDep(e.target.value)} />
-            </div>
+            <Input label="Departure Time" type="time" value={formDep} onChange={(e) => setFormDep(e.target.value)} />
+            <Input label="Planned Trips" type="number" value={formTrips} onChange={(e) => setFormTrips(e.target.value)} />
           </div>
-          <div className="flex gap-2 justify-end pt-1">
-            <Button variant="outline" size="sm" onClick={() => setDialogMode(null)}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={!formDriver || !formBus || !formRoute}>
-              {dialogMode === "edit" ? "Save Changes" : "Create Assignment"}
+          <div className="flex gap-2 pt-1">
+            <Button variant="ghost" className="flex-1" onClick={() => setDialogMode(null)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={handleSave} disabled={!formRoute}>
+              {dialogMode === "new" ? "Create Duty" : "Save Changes"}
             </Button>
           </div>
         </div>
       </Dialog>
 
-      {/* Replace driver dialog */}
-      <Dialog
-        open={dialogMode === "replace"}
-        onClose={() => setDialogMode(null)}
-        title="Replace Driver"
-        description={editTarget ? `${editTarget.driver} is a no-show on ${editTarget.route}. Assign a replacement driver.` : ""}
-      >
+      {/* Replace Driver Dialog */}
+      <Dialog open={dialogMode === "replace"} onClose={() => setDialogMode(null)} title="Replace Driver" description={`No-show: ${editTarget?.driver}. Select a replacement driver.`}>
         <div className="space-y-4">
-          <div>
-            <label className="block text-xs text-zinc-500 mb-1.5">Replacement Driver</label>
-            <Select value={replaceDriver} onChange={(e) => setReplaceDriver(e.target.value)}>
-              <option value="">Select driver…</option>
-              {availableDrivers
-                .filter((d) => d.name !== editTarget?.driver)
-                .map((d) => <option key={d.id} value={d.name}>{d.name} ({d.code})</option>)}
-            </Select>
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" size="sm" onClick={() => setDialogMode(null)}>Cancel</Button>
-            <Button size="sm" onClick={handleReplace} disabled={!replaceDriver}>Assign Replacement</Button>
+          <Select label="Replacement Driver" value={replaceDriver} onChange={(e) => setReplaceDriver(e.target.value)}>
+            <option value="">— Select Driver —</option>
+            {availableDrivers.filter((d) => d.id !== editTarget?.driverId).map((d) => (
+              <option key={d.id} value={d.id}>{d.name} ({d.code}) — {d.shift ?? "no shift"}</option>
+            ))}
+          </Select>
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setDialogMode(null)}>Cancel</Button>
+            <Button variant="primary" className="flex-1" onClick={handleReplace} disabled={!replaceDriver}>Replace Driver</Button>
           </div>
         </div>
       </Dialog>
 
-      {/* Toasts */}
-      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-sm",
-              t.type === "success" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
-              t.type === "error" && "bg-red-500/10 border-red-500/20 text-red-300",
-              t.type === "info" && "bg-blue-500/10 border-blue-500/20 text-blue-300"
-            )}
-          >
-            {t.message}
+      {/* Cancel Duty Dialog */}
+      <Dialog open={dialogMode === "cancel"} onClose={() => setDialogMode(null)} title="Cancel Duty" description={`Cancel ${editTarget?.route} departure at ${editTarget?.departure}?`}>
+        <div className="space-y-4">
+          <Textarea label="Reason" rows={2} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason for cancellation..." />
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setDialogMode(null)}>Back</Button>
+            <Button variant="danger" className="flex-1" onClick={handleCancel}>Confirm Cancel</Button>
           </div>
-        ))}
-      </div>
-    </>
+        </div>
+      </Dialog>
+
+      <ToastContainer toasts={toasts} />
+    </div>
+  )
+}
+
+export default function DispatchPage() {
+  return (
+    <Suspense>
+      <DispatchInner />
+    </Suspense>
   )
 }

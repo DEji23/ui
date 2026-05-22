@@ -1,28 +1,28 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-  {
-    variants: {
-      variant: {
-        default: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-        success: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-        destructive: "bg-red-500/10 text-red-400 border border-red-500/20",
-        warning: "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20",
-        muted: "bg-white/5 text-zinc-400 border border-white/10",
-        info: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-      },
-    },
-    defaultVariants: { variant: "default" },
-  }
-)
+interface BadgeProps {
+  children: React.ReactNode
+  variant?: "green" | "red" | "yellow" | "amber" | "gray" | "blue"
+  className?: string
+}
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-export function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />
+export function Badge({ children, variant = "gray", className }: BadgeProps) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium",
+        {
+          "bg-emerald-500/15 text-emerald-400": variant === "green",
+          "bg-red-500/15 text-red-400": variant === "red",
+          "bg-yellow-500/15 text-yellow-400": variant === "yellow",
+          "bg-amber-500/15 text-amber-400": variant === "amber",
+          "bg-white/8 text-white/60": variant === "gray",
+          "bg-blue-500/15 text-blue-400": variant === "blue",
+        },
+        className
+      )}
+    >
+      {children}
+    </span>
+  )
 }

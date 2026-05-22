@@ -1,26 +1,19 @@
 "use client"
-
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Header } from "@/components/layout/header"
-import { Card, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Avatar } from "@/components/ui/avatar"
-import { Dialog } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
-import { cn, formatNGN, formatNGNFull } from "@/lib/utils"
-import { reconciliationItems as initial, type ReconciliationItem } from "@/lib/data"
-import { TickCircle, CloseCircle, Timer1, Money, Warning2 } from "iconsax-react"
+import { Dialog } from "@/components/ui/dialog"
+import { ToastContainer, type Toast } from "@/components/ui/toast"
+import { reconciliationItems as initial, type ReconciliationItem, type ReconciliationStatus } from "@/lib/data"
+import { formatNGNFull, formatDate } from "@/lib/utils"
 
-type Toast = { id: number; message: string; type: "success" | "error" | "info" }
-type DialogMode = "investigate" | "view" | "prompt" | null
+type DialogMode = "investigate" | "view" | null
 
-function statusInfo(status: string) {
-  if (status === "match") return { icon: <TickCircle size={14} color="#34d399" variant="Bold" />, badge: <Badge variant="success">Matched</Badge> }
-  if (status === "discrepancy") return { icon: <CloseCircle size={14} color="#f87171" variant="Bold" />, badge: <Badge variant="destructive">Discrepancy</Badge> }
-  return { icon: <Timer1 size={14} color="#f59e0b" variant="Linear" />, badge: <Badge variant="default">Pending</Badge> }
+const statusBadge: Record<ReconciliationStatus, "green" | "red" | "yellow"> = {
+  match: "green", discrepancy: "red", pending: "yellow",
 }
 
 export default function ReconciliationPage() {
@@ -30,266 +23,170 @@ export default function ReconciliationPage() {
   const [resolution, setResolution] = useState("")
   const [notes, setNotes] = useState("")
   const [toasts, setToasts] = useState<Toast[]>([])
+  const counterRef = useRef(0)
 
-  function addToast(message: string, type: Toast["type"] = "success") {
-    const id = Date.now()
+  const toast = (message: string, type: Toast["type"] = "success") => {
+    const id = ++counterRef.current
     setToasts((t) => [...t, { id, message, type }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }
 
-  function openInvestigate(item: ReconciliationItem) {
-    setTarget(item); setResolution(""); setNotes("")
-    setDialogMode("investigate")
-  }
-
-  function openView(item: ReconciliationItem) {
-    setTarget(item)
-    setDialogMode("view")
-  }
-
-  function handlePrompt(item: ReconciliationItem) {
-    addToast(`Prompt sent to ${item.driver}`, "info")
-  }
-
-  function handleResolve() {
+  const handleResolve = () => {
     if (!target || !resolution) return
-    const newStatus: ReconciliationItem["status"] =
-      resolution === "accept" ? "match" :
-      resolution === "flag" ? "discrepancy" : "pending"
-    setItems((list) =>
-      list.map((x) =>
-        x.id === target.id
-          ? { ...x, status: newStatus, discrepancyReason: resolution === "flag" ? "Flagged for review" : x.discrepancyReason }
-          : x
-      )
-    )
-    const msg =
-      resolution === "accept" ? `Declaration accepted for ${target.driver}` :
-      resolution === "flag" ? `${target.driver} flagged — compliance notified` :
-      `Resubmission requested from ${target.driver}`
-    addToast(msg, resolution === "flag" ? "error" : "success")
+    const newStatus: ReconciliationStatus =
+      resolution === "accept" ? "match" : resolution === "flag" ? "discrepancy" : "pending"
+    setItems((i) => i.map((x) => x.id === target.id ? { ...x, status: newStatus, notes } : x))
+    toast(resolution === "accept" ? "Entry accepted" : resolution === "flag" ? "Flagged for audit" : "Sent for resubmission")
     setDialogMode(null)
+    setResolution("")
+    setNotes("")
   }
 
-  const discrepancies = items.filter((r) => r.status === "discrepancy")
-  const totalDiscrepancy = discrepancies.reduce((sum, r) => sum + Math.abs(r.expectedCash - r.declaredCash), 0)
-  const totalRevenue = items.reduce((sum, r) => sum + r.walletEarnings + r.declaredCash, 0)
-  const pendingCount = items.filter((r) => r.status === "pending").length
+  const handlePrompt = (item: ReconciliationItem) => {
+    toast(`Prompt sent to ${item.driver.split(" ")[0]}`, "info")
+  }
+
+  const summary = {
+    total: items.length,
+    match: items.filter((i) => i.status === "match").length,
+    discrepancy: items.filter((i) => i.status === "discrepancy").length,
+    totalExpected: items.reduce((s, i) => s + i.expectedRevenue, 0),
+    totalDeclared: items.reduce((s, i) => s + i.declaredRevenue, 0),
+  }
 
   return (
-    <>
-      <Header title="Cash Reconciliation" subtitle="End-of-shift declarations and audit trail" />
-      <main className="flex-1 p-6 space-y-5">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-[#111214] border border-white/[0.07] rounded-xl p-5 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Money size={18} color="#34d399" variant="Bold" />
+    <div className="pt-14">
+      <Header
+        title="Reconciliation"
+        subtitle={`${summary.match} matched · ${summary.discrepancy} discrepancies`}
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => toast("CSV exported", "info")}>
+            Export CSV
+          </Button>
+        }
+      />
+
+      <div className="p-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {[
+            { label: "Total Expected", value: formatNGNFull(summary.totalExpected), color: "text-white" },
+            { label: "Total Declared", value: formatNGNFull(summary.totalDeclared), color: "text-white" },
+            { label: "Net Variance", value: formatNGNFull(summary.totalExpected - summary.totalDeclared), color: summary.totalExpected > summary.totalDeclared ? "text-red-400" : "text-emerald-400" },
+            { label: "Match Rate", value: `${Math.round((summary.match / summary.total) * 100)}%`, color: "text-amber-400" },
+          ].map((s) => (
+            <div key={s.label} className="bg-[#141518] border border-white/6 rounded-xl p-4">
+              <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+              <div className="text-xs text-white/40 mt-0.5">{s.label}</div>
             </div>
-            <div>
-              <p className="text-xs text-zinc-500 mb-0.5">Total Revenue</p>
-              <p className="text-xl font-bold text-zinc-100">{formatNGN(totalRevenue)}</p>
-              <p className="text-xs text-zinc-600">Yesterday — all shifts</p>
-            </div>
-          </div>
-          <div className="bg-[#111214] border border-white/[0.07] rounded-xl p-5 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-              <CloseCircle size={18} color="#f87171" variant="Bold" />
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500 mb-0.5">Discrepancy Total</p>
-              <p className="text-xl font-bold text-red-400">-{formatNGN(totalDiscrepancy)}</p>
-              <p className="text-xs text-zinc-600">{discrepancies.length} unresolved</p>
-            </div>
-          </div>
-          <div className="bg-[#111214] border border-white/[0.07] rounded-xl p-5 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-              <Timer1 size={18} color="#f59e0b" variant="Linear" />
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500 mb-0.5">Pending</p>
-              <p className="text-xl font-bold text-zinc-100">{pendingCount}</p>
-              <p className="text-xs text-zinc-600">Awaiting declaration</p>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <Card>
-          <CardHeader className="px-5 py-4 border-b border-white/[0.05]">
-            <CardTitle>Shift Declarations</CardTitle>
-          </CardHeader>
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider border-b border-white/[0.04]">
-            <span>Driver</span><span>Expected Cash</span><span>Declared Cash</span><span>Wallet</span><span>Status</span><span></span>
+        {/* Table */}
+        <div className="bg-[#141518] border border-white/6 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[1fr_1fr_100px_110px_110px_100px_140px] text-[10px] font-semibold text-white/30 uppercase tracking-wider px-5 py-3 border-b border-white/6">
+            <span>Driver</span><span>Route</span><span>Date</span><span>Expected</span><span>Declared</span><span>Status</span><span>Actions</span>
           </div>
-          <div className="divide-y divide-white/[0.04]">
-            {items.map((item) => {
-              const si = statusInfo(item.status)
-              const diff = item.declaredCash - item.expectedCash
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-4 hover:bg-white/[0.02] transition-colors",
-                    item.status === "discrepancy" && "bg-red-500/[0.03]"
+          {items.map((item) => {
+            const shortfall = item.expectedRevenue - item.declaredRevenue
+            return (
+              <div key={item.id} className="grid grid-cols-[1fr_1fr_100px_110px_110px_100px_140px] px-5 py-3.5 border-b border-white/5 last:border-0 hover:bg-white/2 items-center">
+                <div>
+                  <div className="text-sm font-medium text-white/90">{item.driver.split(" ")[0]}</div>
+                  <div className="text-[10px] text-white/30">{item.bus}</div>
+                </div>
+                <span className="text-sm text-white/60">{item.route}</span>
+                <span className="text-xs text-white/50">{formatDate(item.date)}</span>
+                <span className="text-sm text-white/70">{formatNGNFull(item.expectedRevenue)}</span>
+                <span className={`text-sm font-medium ${item.status === "discrepancy" ? "text-red-400" : "text-white/70"}`}>
+                  {formatNGNFull(item.declaredRevenue)}
+                </span>
+                <Badge variant={statusBadge[item.status]} className="text-[9px] w-fit">{item.status}</Badge>
+                <div className="flex gap-1.5">
+                  {item.status === "discrepancy" ? (
+                    <>
+                      <button
+                        onClick={() => { setTarget(item); setResolution(""); setNotes(""); setDialogMode("investigate") }}
+                        className="text-[10px] text-amber-400/70 hover:text-amber-400 px-1.5 py-1 rounded hover:bg-amber-500/8"
+                      >
+                        Investigate
+                      </button>
+                      <button
+                        onClick={() => handlePrompt(item)}
+                        className="text-[10px] text-white/40 hover:text-white/70 px-1.5 py-1 rounded hover:bg-white/5"
+                      >
+                        Prompt
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => { setTarget(item); setDialogMode("view") }}
+                      className="text-[10px] text-white/40 hover:text-white/70 px-1.5 py-1 rounded hover:bg-white/5"
+                    >
+                      View
+                    </button>
                   )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar name={item.driver} size="sm" />
-                    <div>
-                      <p className="text-sm font-medium text-zinc-200">{item.driver}</p>
-                      <p className="text-xs text-zinc-600">{item.bus} · {item.shift}</p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium text-zinc-300">
-                    {item.status === "pending" ? "—" : formatNGNFull(item.expectedCash)}
-                  </p>
-                  <div>
-                    <p className={cn("text-sm font-medium", item.status === "discrepancy" ? "text-red-400" : "text-zinc-300")}>
-                      {item.status === "pending" ? "—" : formatNGNFull(item.declaredCash)}
-                    </p>
-                    {item.status === "discrepancy" && (
-                      <p className="text-[11px] text-red-500">{diff < 0 ? `${formatNGN(Math.abs(diff))} short` : `${formatNGN(diff)} over`}</p>
-                    )}
-                  </div>
-                  <p className="text-sm text-zinc-300">{formatNGN(item.walletEarnings)}</p>
-                  <div className="flex items-center gap-1.5">{si.icon}{si.badge}</div>
-                  <div>
-                    {item.status === "discrepancy" && (
-                      <Button variant="destructive" size="sm" onClick={() => openInvestigate(item)}>Investigate</Button>
-                    )}
-                    {item.status === "pending" && (
-                      <Button variant="outline" size="sm" onClick={() => handlePrompt(item)}>Prompt</Button>
-                    )}
-                    {item.status === "match" && (
-                      <Button variant="ghost" size="sm" className="text-zinc-600" onClick={() => openView(item)}>View</Button>
-                    )}
-                  </div>
                 </div>
-              )
-            })}
-          </div>
-        </Card>
-      </main>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
-      {/* Investigate dialog */}
-      <Dialog
-        open={dialogMode === "investigate"}
-        onClose={() => setDialogMode(null)}
-        title="Investigate Discrepancy"
-        className="max-w-lg"
-      >
+      {/* Investigate Dialog */}
+      <Dialog open={dialogMode === "investigate"} onClose={() => setDialogMode(null)} title="Investigate Discrepancy" description={target ? `${target.driver} · ${target.route}` : ""} className="max-w-lg">
         {target && (
           <div className="space-y-4">
-            <div className="rounded-xl bg-red-500/[0.06] border border-red-500/20 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Avatar name={target.driver} size="sm" />
-                <div>
-                  <p className="text-sm font-semibold text-zinc-100">{target.driver}</p>
-                  <p className="text-xs text-zinc-500">{target.bus} · {target.shift} shift</p>
-                </div>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1">Expected</p>
-                  <p className="text-sm font-bold text-zinc-200">{formatNGNFull(target.expectedCash)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1">Declared</p>
-                  <p className="text-sm font-bold text-red-400">{formatNGNFull(target.declaredCash)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1">Shortfall</p>
-                  <p className="text-sm font-bold text-red-400">{formatNGN(Math.abs(target.declaredCash - target.expectedCash))}</p>
-                </div>
-              </div>
-              {target.discrepancyReason && (
-                <div className="flex items-start gap-2 pt-1">
-                  <Warning2 size={14} color="#fbbf24" variant="Bold" className="mt-0.5 shrink-0" />
-                  <p className="text-xs text-zinc-400">{target.discrepancyReason}</p>
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1.5">Resolution</label>
-              <Select value={resolution} onChange={(e) => setResolution(e.target.value)}>
-                <option value="">Select action…</option>
-                <option value="accept">Accept declaration — waive shortfall</option>
-                <option value="flag">Flag driver — notify compliance</option>
-                <option value="resubmit">Request resubmission from driver</option>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-xs text-zinc-500 mb-1.5">Investigator notes</label>
-              <Textarea placeholder="Document your findings…" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setDialogMode(null)}>Cancel</Button>
-              <Button
-                size="sm"
-                variant={resolution === "flag" ? "destructive" : "default"}
-                onClick={handleResolve}
-                disabled={!resolution}
-              >
-                {resolution === "accept" ? "Accept & Close" : resolution === "flag" ? "Flag Driver" : "Request Resubmission"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Dialog>
-
-      {/* View matched record dialog */}
-      <Dialog
-        open={dialogMode === "view"}
-        onClose={() => setDialogMode(null)}
-        title="Shift Record"
-        className="max-w-md"
-      >
-        {target && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Avatar name={target.driver} size="md" />
-              <div>
-                <p className="text-sm font-semibold text-zinc-100">{target.driver}</p>
-                <p className="text-xs text-zinc-500">{target.bus} · {target.shift} shift · {target.timestamp}</p>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Expected Cash", value: formatNGNFull(target.expectedCash), color: "text-zinc-300" },
-                { label: "Declared Cash", value: formatNGNFull(target.declaredCash), color: "text-emerald-400" },
-                { label: "Wallet Earnings", value: formatNGNFull(target.walletEarnings), color: "text-zinc-300" },
-                { label: "Total", value: formatNGNFull(target.declaredCash + target.walletEarnings), color: "text-zinc-100" },
-              ].map((row) => (
-                <div key={row.label} className="flex justify-between">
-                  <span className="text-xs text-zinc-500">{row.label}</span>
-                  <span className={cn("text-sm font-semibold", row.color)}>{row.value}</span>
+                { label: "Expected", value: formatNGNFull(target.expectedRevenue), color: "text-white" },
+                { label: "Declared", value: formatNGNFull(target.declaredRevenue), color: "text-red-400" },
+                { label: "Shortfall", value: formatNGNFull(target.expectedRevenue - target.declaredRevenue), color: "text-red-400" },
+              ].map((s) => (
+                <div key={s.label} className="bg-white/4 rounded-lg p-3 text-center">
+                  <div className={`text-base font-bold ${s.color}`}>{s.value}</div>
+                  <div className="text-[10px] text-white/40 mt-0.5">{s.label}</div>
                 </div>
               ))}
             </div>
-            <div className="pt-1">
-              <Button size="sm" variant="outline" className="w-full" onClick={() => setDialogMode(null)}>Close</Button>
+            {target.notes && <div className="bg-red-500/8 border border-red-500/15 rounded-lg p-3 text-xs text-red-300">{target.notes}</div>}
+            <Select label="Resolution" value={resolution} onChange={(e) => setResolution(e.target.value)}>
+              <option value="">— Select action —</option>
+              <option value="accept">Accept as declared (write off shortfall)</option>
+              <option value="flag">Flag for audit</option>
+              <option value="resubmit">Send back for resubmission</option>
+            </Select>
+            <Textarea label="Notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add investigation notes..." />
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => setDialogMode(null)}>Cancel</Button>
+              <Button variant="primary" className="flex-1" onClick={handleResolve} disabled={!resolution}>Apply Resolution</Button>
             </div>
           </div>
         )}
       </Dialog>
 
-      {/* Toasts */}
-      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-sm",
-              t.type === "success" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
-              t.type === "error" && "bg-red-500/10 border-red-500/20 text-red-300",
-              t.type === "info" && "bg-blue-500/10 border-blue-500/20 text-blue-300"
-            )}
-          >
-            {t.message}
+      {/* View Dialog */}
+      <Dialog open={dialogMode === "view"} onClose={() => setDialogMode(null)} title="Reconciliation Record" description={target ? `${target.driver} · ${target.route}` : ""}>
+        {target && (
+          <div className="space-y-3">
+            {[
+              { label: "Date", value: formatDate(target.date) },
+              { label: "Trips Completed", value: target.trips },
+              { label: "Expected Revenue", value: formatNGNFull(target.expectedRevenue) },
+              { label: "Declared Revenue", value: formatNGNFull(target.declaredRevenue) },
+              { label: "Status", value: target.status },
+            ].map((f) => (
+              <div key={f.label} className="flex justify-between text-sm py-1.5 border-b border-white/6 last:border-0">
+                <span className="text-white/40">{f.label}</span>
+                <span className="text-white/80">{f.value}</span>
+              </div>
+            ))}
+            <Button variant="ghost" className="w-full mt-2" onClick={() => setDialogMode(null)}>Close</Button>
           </div>
-        ))}
-      </div>
-    </>
+        )}
+      </Dialog>
+
+      <ToastContainer toasts={toasts} />
+    </div>
   )
 }
