@@ -5,8 +5,11 @@ import { Header } from "@/components/layout/header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Dialog } from "@/components/ui/dialog"
+import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { alerts, type Alert } from "@/lib/data"
+import { alerts as initialAlerts, type Alert } from "@/lib/data"
 import { Danger, Warning2, InfoCircle, TickCircle, Location, Timer1 } from "iconsax-react"
 
 function SeverityIcon({ severity }: { severity: Alert["severity"] }) {
@@ -30,23 +33,62 @@ const typeLabels: Record<Alert["type"], string> = {
   no_show: "No-Show",
 }
 
+const ACTION_OPTIONS = [
+  "Dispatch replacement bus",
+  "Contact driver directly",
+  "Escalate to operations manager",
+  "Mark as resolved",
+  "Request police assistance",
+]
+
 const filterOptions = ["All", "Critical", "Warning", "Acknowledged"] as const
 type AlertFilter = (typeof filterOptions)[number]
+type Toast = { id: number; message: string; type: "success" | "error" | "info" }
 
 export default function AlertsPage() {
   const [filter, setFilter] = useState<AlertFilter>("All")
-  const [dismissed, setDismissed] = useState<string[]>([])
+  const [alertList, setAlertList] = useState<Alert[]>(initialAlerts)
+  const [respondTarget, setRespondTarget] = useState<Alert | null>(null)
+  const [actionType, setActionType] = useState("")
+  const [notes, setNotes] = useState("")
+  const [toasts, setToasts] = useState<Toast[]>([])
 
-  const criticalUnack = alerts.filter((a) => a.severity === "critical" && !a.acknowledged).length
+  function addToast(message: string, type: Toast["type"] = "success") {
+    const id = Date.now()
+    setToasts((t) => [...t, { id, message, type }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
+  }
 
-  const filtered = alerts
-    .filter((a) => {
-      if (filter === "Critical") return a.severity === "critical"
-      if (filter === "Warning") return a.severity === "warning"
-      if (filter === "Acknowledged") return a.acknowledged
-      return true
-    })
-    .filter((a) => !dismissed.includes(a.id))
+  const criticalUnack = alertList.filter((a) => a.severity === "critical" && !a.acknowledged).length
+
+  const filtered = alertList.filter((a) => {
+    if (filter === "Critical") return a.severity === "critical"
+    if (filter === "Warning") return a.severity === "warning"
+    if (filter === "Acknowledged") return a.acknowledged
+    return true
+  })
+
+  function handleAcknowledge(id: string) {
+    setAlertList((list) => list.map((a) => a.id === id ? { ...a, acknowledged: true } : a))
+    addToast("Alert acknowledged", "info")
+  }
+
+  function handleRespond() {
+    if (!respondTarget || !actionType) return
+    setAlertList((list) =>
+      list.map((a) => a.id === respondTarget.id ? { ...a, acknowledged: true } : a)
+    )
+    addToast(`Response logged: ${actionType}`)
+    setRespondTarget(null)
+    setActionType("")
+    setNotes("")
+  }
+
+  function openRespond(alert: Alert) {
+    setRespondTarget(alert)
+    setActionType("")
+    setNotes("")
+  }
 
   return (
     <>
@@ -59,7 +101,6 @@ export default function AlertsPage() {
         }
       />
       <main className="flex-1 p-6 space-y-5">
-        {/* Filters */}
         <div className="flex items-center gap-1.5">
           {filterOptions.map((f) => (
             <button
@@ -82,7 +123,6 @@ export default function AlertsPage() {
           ))}
         </div>
 
-        {/* Alert list */}
         <div className="space-y-3">
           {filtered.length === 0 && (
             <div className="py-20 text-center text-zinc-600">
@@ -94,11 +134,8 @@ export default function AlertsPage() {
             <Card
               key={alert.id}
               className={cn(
-                alert.severity === "critical" && !alert.acknowledged
-                  ? "border-red-500/25 bg-red-500/[0.04]"
-                  : alert.severity === "warning" && !alert.acknowledged
-                  ? "border-yellow-500/25 bg-yellow-500/[0.04]"
-                  : "",
+                alert.severity === "critical" && !alert.acknowledged ? "border-red-500/25 bg-red-500/[0.04]" :
+                alert.severity === "warning" && !alert.acknowledged ? "border-yellow-500/25 bg-yellow-500/[0.04]" : "",
                 alert.acknowledged && "opacity-60"
               )}
             >
@@ -126,27 +163,22 @@ export default function AlertsPage() {
                           <span>{alert.location}</span>
                         </div>
                       )}
-                      {alert.driver && (
-                        <span className="text-xs text-zinc-600">Driver: {alert.driver}</span>
-                      )}
-                      {alert.bus && (
-                        <span className="text-xs text-zinc-600">Bus: {alert.bus}</span>
-                      )}
+                      {alert.driver && <span className="text-xs text-zinc-600">Driver: {alert.driver}</span>}
+                      {alert.bus && <span className="text-xs text-zinc-600">Bus: {alert.bus}</span>}
                     </div>
                   </div>
                   {!alert.acknowledged && (
                     <div className="flex gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDismissed((d) => [...d, alert.id])}
-                      >
-                        Dismiss
+                      <Button variant="outline" size="sm" onClick={() => handleAcknowledge(alert.id)}>
+                        Acknowledge
                       </Button>
-                      {alert.severity === "critical" && (
-                        <Button size="sm" variant="destructive">Respond</Button>
-                      )}
+                      <Button size="sm" variant={alert.severity === "critical" ? "destructive" : "default"} onClick={() => openRespond(alert)}>
+                        Respond
+                      </Button>
                     </div>
+                  )}
+                  {alert.acknowledged && (
+                    <Button variant="ghost" size="sm" onClick={() => openRespond(alert)}>View</Button>
                   )}
                 </div>
               </CardContent>
@@ -154,6 +186,76 @@ export default function AlertsPage() {
           ))}
         </div>
       </main>
+
+      {/* Respond dialog */}
+      <Dialog
+        open={!!respondTarget}
+        onClose={() => setRespondTarget(null)}
+        title={respondTarget ? `Respond — ${respondTarget.title}` : ""}
+        description={respondTarget?.description}
+        className="max-w-lg"
+      >
+        {respondTarget && (
+          <div className="space-y-4">
+            <div className={cn(
+              "rounded-lg p-3 text-xs",
+              respondTarget.severity === "critical" ? "bg-red-500/10 border border-red-500/20 text-red-300" :
+              respondTarget.severity === "warning" ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-300" :
+              "bg-blue-500/10 border border-blue-500/20 text-blue-300"
+            )}>
+              <div className="flex gap-3">
+                {respondTarget.driver && <span><span className="text-zinc-500">Driver:</span> {respondTarget.driver}</span>}
+                {respondTarget.bus && <span><span className="text-zinc-500">Bus:</span> {respondTarget.bus}</span>}
+                {respondTarget.location && <span><span className="text-zinc-500">Location:</span> {respondTarget.location}</span>}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1.5">Action</label>
+              <Select value={actionType} onChange={(e) => setActionType(e.target.value)}>
+                <option value="">Select action…</option>
+                {ACTION_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </Select>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1.5">Notes <span className="text-zinc-700">(optional)</span></label>
+              <Textarea
+                placeholder="Add context, decisions, or follow-up steps…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setRespondTarget(null)}>Cancel</Button>
+              <Button
+                size="sm"
+                variant={respondTarget.severity === "critical" ? "destructive" : "default"}
+                onClick={handleRespond}
+                disabled={!actionType}
+              >
+                Log Response
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+
+      {/* Toasts */}
+      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              "px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-sm",
+              t.type === "success" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+              t.type === "error" && "bg-red-500/10 border-red-500/20 text-red-300",
+              t.type === "info" && "bg-blue-500/10 border-blue-500/20 text-blue-300"
+            )}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
     </>
   )
 }

@@ -7,14 +7,14 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import { cn, formatNGN } from "@/lib/utils"
-import { buses, type BusStatus } from "@/lib/data"
-import { Add, Bus, TickCircle, CloseCircle } from "iconsax-react"
+import { Sheet } from "@/components/ui/sheet"
+import { Dialog } from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
+import { buses, type Bus, type BusStatus } from "@/lib/data"
+import { Add, Bus as BusIcon, TickCircle, CloseCircle, Warning2, Setting2, UserRemove } from "iconsax-react"
 
-const statusConfig: Record<
-  BusStatus,
-  { label: string; variant: "success" | "muted" | "warning" | "destructive" | "default" }
-> = {
+const statusConfig: Record<BusStatus, { label: string; variant: "success" | "muted" | "warning" | "destructive" | "default" }> = {
   active: { label: "On Route", variant: "success" },
   available: { label: "Available", variant: "default" },
   blocked: { label: "Blocked", variant: "destructive" },
@@ -23,11 +23,27 @@ const statusConfig: Record<
 
 const filters = ["All", "On Route", "Available", "Blocked", "Maintenance"] as const
 type Filter = (typeof filters)[number]
+type Toast = { id: number; message: string; type: "success" | "error" | "info" }
+type ConfirmAction = { type: "block" | "unblock" | "maintenance" | "unassign"; bus: Bus }
 
 export default function FleetPage() {
   const [filter, setFilter] = useState<Filter>("All")
+  const [selected, setSelected] = useState<Bus | null>(null)
+  const [busStates, setBusStates] = useState<Record<string, BusStatus>>(() =>
+    Object.fromEntries(buses.map((b) => [b.id, b.status]))
+  )
+  const [confirm, setConfirm] = useState<ConfirmAction | null>(null)
+  const [toasts, setToasts] = useState<Toast[]>([])
 
-  const filtered = buses.filter((b) => {
+  function addToast(message: string, type: Toast["type"] = "success") {
+    const id = Date.now()
+    setToasts((t) => [...t, { id, message, type }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
+  }
+
+  const mergedBuses = buses.map((b) => ({ ...b, status: busStates[b.id] ?? b.status }))
+
+  const filtered = mergedBuses.filter((b) => {
     if (filter === "All") return true
     if (filter === "On Route") return b.status === "active"
     if (filter === "Available") return b.status === "available"
@@ -36,18 +52,39 @@ export default function FleetPage() {
     return true
   })
 
+  const selectedBus = selected ? mergedBuses.find((b) => b.id === selected.id) ?? selected : null
+
+  function handleConfirm() {
+    if (!confirm) return
+    const { type, bus } = confirm
+    if (type === "block") {
+      setBusStates((s) => ({ ...s, [bus.id]: "blocked" }))
+      addToast(`${bus.code} blocked`, "error")
+    } else if (type === "unblock") {
+      setBusStates((s) => ({ ...s, [bus.id]: "available" }))
+      addToast(`${bus.code} unblocked — now available`)
+    } else if (type === "maintenance") {
+      setBusStates((s) => ({ ...s, [bus.id]: "maintenance" }))
+      addToast(`${bus.code} sent to maintenance`, "info")
+    } else if (type === "unassign") {
+      addToast(`Driver unassigned from ${bus.code}`, "info")
+    }
+    setConfirm(null)
+    setSelected(null)
+  }
+
   const summaryItems = [
-    { label: "On Route", count: buses.filter((b) => b.status === "active").length, iconColor: "#34d399", bg: "bg-emerald-500/10" },
-    { label: "Available", count: buses.filter((b) => b.status === "available").length, iconColor: "#f59e0b", bg: "bg-amber-500/10" },
-    { label: "Blocked", count: buses.filter((b) => b.status === "blocked").length, iconColor: "#f87171", bg: "bg-red-500/10" },
-    { label: "Maintenance", count: buses.filter((b) => b.status === "maintenance").length, iconColor: "#fbbf24", bg: "bg-yellow-500/10" },
+    { label: "On Route", count: mergedBuses.filter((b) => b.status === "active").length, iconColor: "#34d399", bg: "bg-emerald-500/10" },
+    { label: "Available", count: mergedBuses.filter((b) => b.status === "available").length, iconColor: "#f59e0b", bg: "bg-amber-500/10" },
+    { label: "Blocked", count: mergedBuses.filter((b) => b.status === "blocked").length, iconColor: "#f87171", bg: "bg-red-500/10" },
+    { label: "Maintenance", count: mergedBuses.filter((b) => b.status === "maintenance").length, iconColor: "#fbbf24", bg: "bg-yellow-500/10" },
   ]
 
   return (
     <>
       <Header
         title="Fleet"
-        subtitle={`${buses.filter((b) => b.status === "active").length} of ${buses.length} buses active`}
+        subtitle={`${mergedBuses.filter((b) => b.status === "active").length} of ${buses.length} buses active`}
         action={
           <Button size="sm" className="gap-1.5 mr-1">
             <Add size={14} color="currentColor" />
@@ -56,12 +93,11 @@ export default function FleetPage() {
         }
       />
       <main className="flex-1 p-6 space-y-5">
-        {/* Summary */}
         <div className="grid grid-cols-4 gap-4">
           {summaryItems.map((s) => (
             <Card key={s.label} className="p-4 flex items-center gap-3">
               <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", s.bg)}>
-                <Bus size={16} color={s.iconColor} variant="Bold" />
+                <BusIcon size={16} color={s.iconColor} variant="Bold" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-zinc-100">{s.count}</p>
@@ -71,7 +107,6 @@ export default function FleetPage() {
           ))}
         </div>
 
-        {/* Filter */}
         <div className="flex gap-1">
           {filters.map((f) => (
             <button
@@ -89,17 +124,12 @@ export default function FleetPage() {
           ))}
         </div>
 
-        {/* Bus Grid */}
         <div className="grid grid-cols-3 gap-4">
           {filtered.map((bus) => {
             const sc = statusConfig[bus.status]
-            const fill =
-              bus.currentPassengers !== undefined
-                ? (bus.currentPassengers / bus.capacity) * 100
-                : 0
-
+            const fill = bus.currentPassengers !== undefined ? (bus.currentPassengers / bus.capacity) * 100 : 0
             return (
-              <Card key={bus.id} className="hover:border-white/[0.12] transition-colors">
+              <Card key={bus.id} className="hover:border-white/[0.18] transition-colors cursor-pointer" onClick={() => setSelected(bus)}>
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div>
@@ -107,9 +137,7 @@ export default function FleetPage() {
                         <p className="text-base font-bold text-zinc-100">{bus.code}</p>
                         <Badge variant={sc.variant}>{sc.label}</Badge>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        {bus.model} · {bus.plate}
-                      </p>
+                      <p className="text-xs text-zinc-500 mt-0.5">{bus.model} · {bus.plate}</p>
                     </div>
                   </div>
 
@@ -118,9 +146,7 @@ export default function FleetPage() {
                       <Avatar name={bus.driver} size="xs" />
                       <div>
                         <p className="text-xs font-medium text-zinc-300">{bus.driver}</p>
-                        {bus.route && (
-                          <p className="text-[11px] text-zinc-600">{bus.route}</p>
-                        )}
+                        {bus.route && <p className="text-[11px] text-zinc-600">{bus.route}</p>}
                       </div>
                     </div>
                   )}
@@ -129,14 +155,9 @@ export default function FleetPage() {
                     <div className="mb-3">
                       <div className="flex justify-between text-[11px] mb-1">
                         <span className="text-zinc-600">Passengers</span>
-                        <span className="text-zinc-400">
-                          {bus.currentPassengers}/{bus.capacity}
-                        </span>
+                        <span className="text-zinc-400">{bus.currentPassengers}/{bus.capacity}</span>
                       </div>
-                      <Progress
-                        value={fill}
-                        colorClass={fill > 85 ? "bg-emerald-500" : "bg-amber-500"}
-                      />
+                      <Progress value={fill} colorClass={fill > 85 ? "bg-emerald-500" : "bg-amber-500"} />
                     </div>
                   )}
 
@@ -144,14 +165,12 @@ export default function FleetPage() {
                     <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
                       <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Inspection</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {bus.inspectionResult === "pass" ? (
-                          <TickCircle size={12} color="#34d399" variant="Bold" />
-                        ) : bus.inspectionResult === "fail" ? (
-                          <CloseCircle size={12} color="#f87171" variant="Bold" />
-                        ) : null}
-                        <p className="text-xs font-medium text-zinc-300 capitalize">
-                          {bus.inspectionResult}
-                        </p>
+                        {bus.inspectionResult === "pass"
+                          ? <TickCircle size={12} color="#34d399" variant="Bold" />
+                          : bus.inspectionResult === "fail"
+                          ? <CloseCircle size={12} color="#f87171" variant="Bold" />
+                          : null}
+                        <p className="text-xs font-medium text-zinc-300 capitalize">{bus.inspectionResult}</p>
                       </div>
                       <p className="text-[10px] text-zinc-600 mt-0.5">{bus.lastInspection}</p>
                     </div>
@@ -161,13 +180,7 @@ export default function FleetPage() {
                         <p className="text-sm font-bold text-zinc-200 mt-0.5">{bus.fuelLevel}%</p>
                         <Progress
                           value={bus.fuelLevel}
-                          colorClass={
-                            bus.fuelLevel < 25
-                              ? "bg-red-500"
-                              : bus.fuelLevel < 40
-                              ? "bg-yellow-500"
-                              : "bg-emerald-500"
-                          }
+                          colorClass={bus.fuelLevel < 25 ? "bg-red-500" : bus.fuelLevel < 40 ? "bg-yellow-500" : "bg-emerald-500"}
                           className="mt-1 h-1"
                         />
                       </div>
@@ -179,6 +192,201 @@ export default function FleetPage() {
           })}
         </div>
       </main>
+
+      {/* Bus detail sheet */}
+      <Sheet
+        open={!!selectedBus}
+        onClose={() => setSelected(null)}
+        title={selectedBus ? `${selectedBus.code} — ${selectedBus.model}` : ""}
+        subtitle={selectedBus?.plate}
+        footer={
+          selectedBus ? (
+            <>
+              {selectedBus.driver && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setConfirm({ type: "unassign", bus: selectedBus })}
+                >
+                  <UserRemove size={14} color="currentColor" />
+                  Unassign Driver
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setConfirm({ type: "maintenance", bus: selectedBus })}
+              >
+                <Setting2 size={14} color="currentColor" />
+                Mark Maintenance
+              </Button>
+              <div className="ml-auto">
+                {selectedBus.status === "blocked" ? (
+                  <Button variant="success" size="sm" onClick={() => setConfirm({ type: "unblock", bus: selectedBus })}>
+                    Unblock Bus
+                  </Button>
+                ) : (
+                  <Button variant="destructive" size="sm" onClick={() => setConfirm({ type: "block", bus: selectedBus })}>
+                    Block Bus
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : undefined
+        }
+      >
+        {selectedBus && (
+          <div className="px-6 py-5 space-y-5">
+            {/* Status + specs */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-4">
+                <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1">Status</p>
+                <Badge variant={statusConfig[selectedBus.status].variant}>{statusConfig[selectedBus.status].label}</Badge>
+              </div>
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-4">
+                <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-1">Capacity</p>
+                <p className="text-sm font-semibold text-zinc-200">{selectedBus.capacity} seats</p>
+              </div>
+            </div>
+
+            {/* Driver assignment */}
+            {selectedBus.driver ? (
+              <div>
+                <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Assigned Driver</p>
+                <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.06] p-4">
+                  <Avatar name={selectedBus.driver} size="md" />
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-100">{selectedBus.driver}</p>
+                    {selectedBus.route && <p className="text-xs text-zinc-500 mt-0.5">{selectedBus.route}</p>}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 text-center text-zinc-600 text-sm">
+                No driver assigned
+              </div>
+            )}
+
+            {/* Passengers */}
+            {selectedBus.status === "active" && selectedBus.currentPassengers !== undefined && (
+              <div>
+                <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Passenger Load</p>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-zinc-400">Onboard</span>
+                    <span className="font-semibold text-zinc-100">{selectedBus.currentPassengers} / {selectedBus.capacity}</span>
+                  </div>
+                  <Progress
+                    value={(selectedBus.currentPassengers / selectedBus.capacity) * 100}
+                    colorClass="bg-amber-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Inspection */}
+            <div>
+              <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Inspection Record</p>
+              <div className={cn(
+                "rounded-xl border p-4",
+                selectedBus.inspectionResult === "pass" ? "border-emerald-500/20 bg-emerald-500/[0.04]" :
+                selectedBus.inspectionResult === "fail" ? "border-red-500/20 bg-red-500/[0.04]" :
+                "border-white/[0.06] bg-white/[0.02]"
+              )}>
+                <div className="flex items-center gap-2 mb-1">
+                  {selectedBus.inspectionResult === "pass"
+                    ? <TickCircle size={16} color="#34d399" variant="Bold" />
+                    : <CloseCircle size={16} color="#f87171" variant="Bold" />}
+                  <p className={cn(
+                    "text-sm font-semibold capitalize",
+                    selectedBus.inspectionResult === "pass" ? "text-emerald-400" : "text-red-400"
+                  )}>
+                    Pre-trip inspection {selectedBus.inspectionResult}
+                  </p>
+                </div>
+                <p className="text-xs text-zinc-500 ml-6">{selectedBus.lastInspection}</p>
+                {selectedBus.inspectionResult === "fail" && (
+                  <p className="text-xs text-red-400 mt-2 ml-6">Bus must not operate until cleared by maintenance</p>
+                )}
+              </div>
+            </div>
+
+            {/* Fuel */}
+            {selectedBus.fuelLevel !== undefined && (
+              <div>
+                <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Fuel Level</p>
+                <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-zinc-400">Current level</span>
+                    <span className={cn(
+                      "font-semibold",
+                      selectedBus.fuelLevel < 25 ? "text-red-400" : selectedBus.fuelLevel < 40 ? "text-yellow-400" : "text-emerald-400"
+                    )}>
+                      {selectedBus.fuelLevel}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={selectedBus.fuelLevel}
+                    colorClass={selectedBus.fuelLevel < 25 ? "bg-red-500" : selectedBus.fuelLevel < 40 ? "bg-yellow-500" : "bg-emerald-500"}
+                  />
+                  {selectedBus.fuelLevel < 25 && (
+                    <p className="text-xs text-red-400 mt-2">Low fuel — schedule refuelling before next trip</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Sheet>
+
+      {/* Confirm dialog */}
+      <Dialog
+        open={!!confirm}
+        onClose={() => setConfirm(null)}
+        title={
+          confirm?.type === "block" ? "Block Bus" :
+          confirm?.type === "unblock" ? "Unblock Bus" :
+          confirm?.type === "maintenance" ? "Send to Maintenance" : "Unassign Driver"
+        }
+        description={
+          confirm?.type === "block" ? `${confirm.bus.code} will be taken offline immediately. Any active trips will be flagged.` :
+          confirm?.type === "unblock" ? `${confirm?.bus.code} will be set to Available.` :
+          confirm?.type === "maintenance" ? `${confirm?.bus.code} will be marked as under maintenance and removed from dispatch.` :
+          `The assigned driver will be removed from ${confirm?.bus.code}.`
+        }
+      >
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" onClick={() => setConfirm(null)}>Cancel</Button>
+          <Button
+            size="sm"
+            variant={confirm?.type === "unblock" ? "success" : confirm?.type === "block" ? "destructive" : "default"}
+            onClick={handleConfirm}
+          >
+            Confirm
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Toasts */}
+      <div className="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              "px-4 py-3 rounded-xl text-sm font-medium shadow-xl border backdrop-blur-sm",
+              t.type === "success" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+              t.type === "error" && "bg-red-500/10 border-red-500/20 text-red-300",
+              t.type === "info" && "bg-blue-500/10 border-blue-500/20 text-blue-300"
+            )}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
     </>
   )
 }

@@ -21,11 +21,12 @@ const navItems = [
   { href: "/dispatch", label: "Dispatch", icon: Map1 },
   { href: "/alerts", label: "Alerts", icon: Danger, badge: 2 },
   { href: "/reconciliation", label: "Reconciliation", icon: Money },
-  { href: "/leave", label: "Leave Requests", icon: Calendar, badge: 3 },
+  { href: "/leave", label: "Leave Requests", icon: Calendar, badge: 2 },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const settingsActive = pathname === "/settings"
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 flex w-[220px] flex-col border-r border-white/[0.06] bg-[#0c0d0e]">
@@ -89,9 +90,17 @@ export function Sidebar() {
       <div className="border-t border-white/[0.06] p-2 space-y-0.5">
         <Link
           href="/settings"
-          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300 transition-colors"
+          className={cn(
+            "relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+            settingsActive
+              ? "bg-amber-500/10 text-amber-400"
+              : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+          )}
         >
-          <Setting2 size={16} color="currentColor" variant="Linear" />
+          {settingsActive && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-amber-500" />
+          )}
+          <Setting2 size={16} color={settingsActive ? "#f59e0b" : "currentColor"} variant={settingsActive ? "Bold" : "Linear"} />
           <span>Settings</span>
         </Link>
         <div className="mx-1 flex items-center gap-2 rounded-lg bg-white/[0.03] p-2">
