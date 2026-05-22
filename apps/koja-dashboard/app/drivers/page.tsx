@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -48,6 +48,17 @@ export default function DriversPage() {
   const [addStep, setAddStep] = useState(1)
   const [newName, setNewName] = useState("")
   const [newPhone, setNewPhone] = useState("")
+
+  const didAutoOpen = useRef(false)
+  useEffect(() => {
+    if (didAutoOpen.current) return
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("add") === "1") {
+      didAutoOpen.current = true
+      setAddOpen(true)
+      setAddStep(1)
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+  }, [])
 
   function addToast(message: string, type: Toast["type"] = "success") {
     const id = Date.now()

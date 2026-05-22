@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -53,6 +53,16 @@ export default function FleetPage() {
     setToasts((t) => [...t, { id, message, type }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500)
   }
+
+  const didAutoOpen = useRef(false)
+  useEffect(() => {
+    if (didAutoOpen.current) return
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("add") === "1") {
+      didAutoOpen.current = true
+      openRegister()
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+  }, [])
 
   function openRegister() {
     setRegCode(""); setRegModel(""); setRegPlate(""); setRegCapacity("45")
