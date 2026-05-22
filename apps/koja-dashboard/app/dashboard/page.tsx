@@ -25,9 +25,9 @@ export default function DashboardPage() {
     <div className="pt-14">
       <Header title="Dashboard" subtitle={date} />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
               label: "Revenue Today",
@@ -75,9 +75,9 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Revenue Chart */}
-          <div className="col-span-3 bg-[#141518] border border-white/6 rounded-xl p-5">
+          <div className="lg:col-span-3 bg-[#141518] border border-white/6 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-white">Revenue — Last 7 Days</h3>
@@ -110,7 +110,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Active Trips */}
-          <div className="col-span-2 bg-[#141518] border border-white/6 rounded-xl p-5">
+          <div className="lg:col-span-2 bg-[#141518] border border-white/6 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Active Trips</h3>
               <span className="text-xs bg-white/8 px-2 py-0.5 rounded-md text-white/50">{activeTrips.length}</span>
@@ -139,9 +139,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           {/* Alerts Panel */}
-          <div className="col-span-3 bg-[#141518] border border-white/6 rounded-xl">
+          <div className="lg:col-span-3 bg-[#141518] border border-white/6 rounded-xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/6">
               <h3 className="text-sm font-semibold text-white">Active Alerts</h3>
               <Link href="/alerts" className="text-xs text-amber-400 hover:text-amber-300 transition-colors">
@@ -169,7 +169,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions & Stats */}
-          <div className="col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-4">
             <div className="bg-[#141518] border border-white/6 rounded-xl p-4">
               <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Fleet Health</h3>
               <div className="grid grid-cols-2 gap-3">

@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import { Notification, SearchNormal1, CloseCircle, Warning2, TickCircle, Timer1 } from "iconsax-react"
+import { Notification, SearchNormal1, CloseCircle, Warning2, TickCircle, Timer1, HambergerMenu } from "iconsax-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { useSidebar } from "./app-layout"
 
 interface HeaderProps {
   title: string
@@ -35,6 +36,7 @@ export function Header({ title, subtitle, action }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [notifs, setNotifs] = useState<Notif[]>(INITIAL_NOTIFS)
+  const { openMobile } = useSidebar()
 
   const unreadCount = notifs.filter((n) => !n.read).length
 
@@ -48,8 +50,14 @@ export function Header({ title, subtitle, action }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.06] bg-[#09090b]/90 px-6 backdrop-blur-sm">
-        <div className="flex-1 min-w-0 mr-4">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.06] bg-[#09090b]/90 px-4 sm:px-6 backdrop-blur-sm">
+        <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
+          <button
+            onClick={openMobile}
+            className="lg:hidden text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+          >
+            <HambergerMenu size={18} color="currentColor" />
+          </button>
           {searchOpen ? (
             <Input
               autoFocus
@@ -60,10 +68,10 @@ export function Header({ title, subtitle, action }: HeaderProps) {
               className="max-w-xs h-7 text-xs"
             />
           ) : (
-            <>
+            <div className="min-w-0">
               <h1 className="text-sm font-semibold text-zinc-100">{title}</h1>
-              {subtitle && <p className="text-xs text-zinc-600 mt-0.5">{subtitle}</p>}
-            </>
+              {subtitle && <p className="text-xs text-zinc-600 mt-0.5 hidden sm:block">{subtitle}</p>}
+            </div>
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">

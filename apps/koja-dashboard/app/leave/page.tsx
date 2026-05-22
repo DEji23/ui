@@ -90,8 +90,8 @@ export default function LeavePage() {
   return (
     <>
       <Header title="Leave Requests" subtitle={`${pending.length} pending approval`} />
-      <main className="flex-1 p-6 space-y-6">
-        <div className="grid grid-cols-4 gap-4">
+      <main className="flex-1 p-4 sm:p-6 space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {summary.map((s) => (
             <div key={s.label} className="bg-[#111214] border border-white/[0.07] rounded-xl p-4 flex items-center gap-3">
               <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", s.bg)}>
@@ -111,7 +111,7 @@ export default function LeavePage() {
             <div className="space-y-3">
               {pending.map((req) => (
                 <div key={req.id} className="bg-[#111214] border border-amber-500/20 bg-amber-500/[0.03] rounded-xl p-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <Avatar name={req.driver} size="md" />
                       <div>
@@ -119,7 +119,7 @@ export default function LeavePage() {
                           <p className="text-sm font-semibold text-zinc-100">{req.driver}</p>
                           <span className="text-xs text-zinc-600">{req.driverCode}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                           <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border", leaveTypeStyle[req.type])}>
                             {leaveTypeLabels[req.type]}
                           </span>
@@ -131,7 +131,7 @@ export default function LeavePage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Button variant="destructive" size="sm" onClick={() => openDecline(req)}>Decline</Button>
                       <Button size="sm" onClick={() => openApprove(req)}>Approve</Button>
                     </div>
@@ -147,32 +147,36 @@ export default function LeavePage() {
           <Card>
             <div className="divide-y divide-white/[0.04]">
               {requests.map((req) => (
-                <div key={req.id} className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors">
-                  <Avatar name={req.driver} size="sm" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-zinc-200">{req.driver}</p>
-                      <span className="text-xs text-zinc-600">{req.driverCode}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border", leaveTypeStyle[req.type])}>
-                        {leaveTypeLabels[req.type]}
-                      </span>
-                      <span className="text-xs text-zinc-500">{fmtDate(req.from)} – {fmtDate(req.to)}</span>
+                <div key={req.id} className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar name={req.driver} size="sm" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-zinc-200">{req.driver}</p>
+                        <span className="text-xs text-zinc-600">{req.driverCode}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border", leaveTypeStyle[req.type])}>
+                          {leaveTypeLabels[req.type]}
+                        </span>
+                        <span className="text-xs text-zinc-500">{fmtDate(req.from)} – {fmtDate(req.to)}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    {statusBadge(req.status)}
-                    {req.reason && (
-                      <p className="text-[11px] text-zinc-600 mt-1 max-w-[220px] text-right leading-snug">{req.reason}</p>
+                  <div className="flex items-center justify-between sm:justify-end sm:gap-4">
+                    <div>
+                      {statusBadge(req.status)}
+                      {req.reason && (
+                        <p className="text-[11px] text-zinc-600 mt-1 max-w-[200px] leading-snug">{req.reason}</p>
+                      )}
+                    </div>
+                    {req.status === "pending" && (
+                      <div className="flex gap-1.5 shrink-0">
+                        <Button variant="ghost" size="sm" onClick={() => openDecline(req)}>Decline</Button>
+                        <Button size="sm" onClick={() => openApprove(req)}>Approve</Button>
+                      </div>
                     )}
                   </div>
-                  {req.status === "pending" && (
-                    <div className="flex gap-1.5">
-                      <Button variant="ghost" size="sm" onClick={() => openDecline(req)}>Decline</Button>
-                      <Button size="sm" onClick={() => openApprove(req)}>Approve</Button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

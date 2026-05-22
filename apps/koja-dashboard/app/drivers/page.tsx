@@ -13,7 +13,7 @@ import { Dialog } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { cn, formatNGN } from "@/lib/utils"
 import { drivers as initialDrivers, type Driver, type DriverStatus } from "@/lib/data"
-import { Add, SearchNormal1, Star1, Call, Slash, Warning2, TickCircle, Sms, Car, UserAdd } from "iconsax-react"
+import { Add, SearchNormal1, Star1, Call, Slash, Warning2, TickCircle, Sms, Car, UserAdd, Grid1, RowVertical } from "iconsax-react"
 
 const statusConfig: Record<
   DriverStatus,
@@ -42,6 +42,7 @@ export default function DriversPage() {
   )
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [view, setView] = useState<"grid" | "table">("grid")
 
   // Add driver form
   const [addOpen, setAddOpen] = useState(false)
@@ -140,9 +141,9 @@ export default function DriversPage() {
           </Button>
         }
       />
-      <main className="flex-1 p-6 space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="relative max-w-xs">
+      <main className="flex-1 p-4 sm:p-6 space-y-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full sm:w-auto sm:max-w-xs">
             <SearchNormal1 size={14} color="#52525b" className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <Input placeholder="Search name or code…" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
@@ -162,73 +163,172 @@ export default function DriversPage() {
               </button>
             ))}
           </div>
+          <div className="ml-auto flex items-center gap-1 rounded-lg border border-white/[0.08] p-1">
+            <button
+              onClick={() => setView("grid")}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                view === "grid" ? "bg-white/10 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"
+              )}
+              title="Grid view"
+            >
+              <Grid1 size={14} color="currentColor" />
+            </button>
+            <button
+              onClick={() => setView("table")}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                view === "table" ? "bg-white/10 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"
+              )}
+              title="Table view"
+            >
+              <RowVertical size={14} color="currentColor" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          {filtered.map((driver) => {
-            const sc = statusConfig[driver.status]
-            const weekFill = (driver.hoursThisWeek / 60) * 100
-            return (
-              <Card
-                key={driver.id}
-                className="hover:border-white/[0.18] transition-colors cursor-pointer"
-                onClick={() => setSelected(driver)}
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={driver.name} size="lg" />
+        {view === "grid" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map((driver) => {
+              const sc = statusConfig[driver.status]
+              const weekFill = (driver.hoursThisWeek / 60) * 100
+              return (
+                <Card
+                  key={driver.id}
+                  className="hover:border-white/[0.18] transition-colors cursor-pointer"
+                  onClick={() => setSelected(driver)}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={driver.name} size="lg" />
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-100">{driver.name}</p>
+                          <p className="text-xs text-zinc-500">{driver.code}</p>
+                        </div>
+                      </div>
+                      <Badge variant={sc.variant}>{sc.label}</Badge>
+                    </div>
+
+                    {driver.route && (
+                      <div className="mb-3 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
+                        <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-0.5">Current Route</p>
+                        <p className="text-xs font-medium text-zinc-300">{driver.route}</p>
+                        {driver.bus && <p className="text-[11px] text-zinc-600 mt-0.5">{driver.bus}</p>}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] p-2 text-center">
+                        <p className="text-base font-bold text-zinc-200">{driver.tripsToday}</p>
+                        <p className="text-[10px] text-zinc-600">Trips</p>
+                      </div>
+                      <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] p-2 text-center">
+                        <p className="text-base font-bold text-zinc-200">{formatNGN(driver.earningsToday)}</p>
+                        <p className="text-[10px] text-zinc-600">Earned</p>
+                      </div>
+                      <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] p-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Star1 size={12} color="#f59e0b" variant="Bold" />
+                          <p className="text-base font-bold text-zinc-200">{driver.rating}</p>
+                        </div>
+                        <p className="text-[10px] text-zinc-600">Rating</p>
+                      </div>
+                    </div>
+
+                    {driver.hoursThisWeek > 0 && (
                       <div>
-                        <p className="text-sm font-semibold text-zinc-100">{driver.name}</p>
-                        <p className="text-xs text-zinc-500">{driver.code}</p>
+                        <div className="flex justify-between mb-1">
+                          <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Hours This Week</p>
+                          <p className="text-[11px] text-zinc-500">{driver.hoursThisWeek}h / 60h</p>
+                        </div>
+                        <Progress
+                          value={weekFill}
+                          colorClass={weekFill > 83 ? "bg-red-500" : weekFill > 67 ? "bg-yellow-500" : "bg-amber-500"}
+                        />
                       </div>
-                    </div>
-                    <Badge variant={sc.variant}>{sc.label}</Badge>
-                  </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
 
-                  {driver.route && (
-                    <div className="mb-3 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
-                      <p className="text-[10px] text-zinc-600 uppercase tracking-wider mb-0.5">Current Route</p>
-                      <p className="text-xs font-medium text-zinc-300">{driver.route}</p>
-                      {driver.bus && <p className="text-[11px] text-zinc-600 mt-0.5">{driver.bus}</p>}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] p-2 text-center">
-                      <p className="text-base font-bold text-zinc-200">{driver.tripsToday}</p>
-                      <p className="text-[10px] text-zinc-600">Trips</p>
-                    </div>
-                    <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] p-2 text-center">
-                      <p className="text-base font-bold text-zinc-200">{formatNGN(driver.earningsToday)}</p>
-                      <p className="text-[10px] text-zinc-600">Earned</p>
-                    </div>
-                    <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] p-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Star1 size={12} color="#f59e0b" variant="Bold" />
-                        <p className="text-base font-bold text-zinc-200">{driver.rating}</p>
-                      </div>
-                      <p className="text-[10px] text-zinc-600">Rating</p>
-                    </div>
-                  </div>
-
-                  {driver.hoursThisWeek > 0 && (
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Hours This Week</p>
-                        <p className="text-[11px] text-zinc-500">{driver.hoursThisWeek}h / 60h</p>
-                      </div>
-                      <Progress
-                        value={weekFill}
-                        colorClass={weekFill > 83 ? "bg-red-500" : weekFill > 67 ? "bg-yellow-500" : "bg-amber-500"}
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+        {view === "table" && (
+          <div className="rounded-xl border border-white/[0.08] overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.08] bg-white/[0.02]">
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Driver</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Route</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Trips</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Earned</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Rating</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider w-40">Hours / Week</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {filtered.map((driver) => {
+                  const sc = statusConfig[driver.status]
+                  const weekFill = (driver.hoursThisWeek / 60) * 100
+                  return (
+                    <tr
+                      key={driver.id}
+                      className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                      onClick={() => setSelected(driver)}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={driver.name} size="sm" />
+                          <div>
+                            <p className="text-sm font-medium text-zinc-200 group-hover:text-zinc-100 transition-colors">{driver.name}</p>
+                            <p className="text-[11px] text-zinc-600">{driver.code}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={sc.variant}>{sc.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        {driver.route ? (
+                          <div>
+                            <p className="text-xs text-zinc-300">{driver.route}</p>
+                            {driver.bus && <p className="text-[11px] text-zinc-600">{driver.bus}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-zinc-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-sm font-medium text-zinc-200">{driver.tripsToday}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-sm font-medium text-zinc-200">{formatNGN(driver.earningsToday)}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Star1 size={11} color="#f59e0b" variant="Bold" />
+                          <span className="text-sm font-medium text-zinc-200">{driver.rating}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={weekFill}
+                            colorClass={weekFill > 83 ? "bg-red-500" : weekFill > 67 ? "bg-yellow-500" : "bg-amber-500"}
+                          />
+                          <span className="text-[11px] text-zinc-600 whitespace-nowrap">{driver.hoursThisWeek}h</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {filtered.length === 0 && (
           <div className="py-16 text-center text-zinc-600">
@@ -388,7 +488,7 @@ export default function DriversPage() {
           <div className="px-6 py-5 space-y-5">
             {/* Identity */}
             <div className="flex items-center gap-4">
-              <Avatar name={selectedDriver.name} size="xl" />
+              <Avatar name={selectedDriver.name} size="lg" />
               <div>
                 <p className="text-base font-bold text-zinc-100">{selectedDriver.name}</p>
                 <p className="text-sm text-zinc-500">{selectedDriver.code}</p>

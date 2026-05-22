@@ -12,7 +12,7 @@ import { Dialog } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { buses as initialBuses, type Bus, type BusStatus } from "@/lib/data"
-import { Add, Bus as BusIcon, TickCircle, CloseCircle, Warning2, Setting2, UserRemove } from "iconsax-react"
+import { Add, Bus as BusIcon, TickCircle, CloseCircle, Warning2, Setting2, UserRemove, Grid1, RowVertical } from "iconsax-react"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 
@@ -37,6 +37,7 @@ export default function FleetPage() {
   )
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [view, setView] = useState<"grid" | "table">("grid")
 
   // Register bus wizard
   const [regOpen, setRegOpen] = useState(false)
@@ -140,8 +141,8 @@ export default function FleetPage() {
           </Button>
         }
       />
-      <main className="flex-1 p-6 space-y-5">
-        <div className="grid grid-cols-4 gap-4">
+      <main className="flex-1 p-4 sm:p-6 space-y-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {summaryItems.map((s) => (
             <Card key={s.label} className="p-4 flex items-center gap-3">
               <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", s.bg)}>
@@ -155,90 +156,208 @@ export default function FleetPage() {
           ))}
         </div>
 
-        <div className="flex gap-1">
-          {filters.map((f) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1">
+            {filters.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
+                  filter === f
+                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300 border-transparent"
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex items-center gap-1 rounded-lg border border-white/[0.08] p-1">
             <button
-              key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => setView("grid")}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
-                filter === f
-                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                  : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300 border-transparent"
+                "p-1.5 rounded-md transition-colors",
+                view === "grid" ? "bg-white/10 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"
               )}
+              title="Grid view"
             >
-              {f}
+              <Grid1 size={14} color="currentColor" />
             </button>
-          ))}
+            <button
+              onClick={() => setView("table")}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                view === "table" ? "bg-white/10 text-zinc-200" : "text-zinc-500 hover:text-zinc-300"
+              )}
+              title="Table view"
+            >
+              <RowVertical size={14} color="currentColor" />
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          {filtered.map((bus) => {
-            const sc = statusConfig[bus.status]
-            const fill = bus.currentPassengers !== undefined ? (bus.currentPassengers / bus.capacity) * 100 : 0
-            return (
-              <Card key={bus.id} className="hover:border-white/[0.18] transition-colors cursor-pointer" onClick={() => setSelected(bus)}>
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-base font-bold text-zinc-100">{bus.code}</p>
-                        <Badge variant={sc.variant}>{sc.label}</Badge>
-                      </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">{bus.model} · {bus.plate}</p>
-                    </div>
-                  </div>
-
-                  {bus.driver && (
-                    <div className="flex items-center gap-2 mb-3 bg-white/[0.03] rounded-lg p-2 border border-white/[0.05]">
-                      <Avatar name={bus.driver} size="xs" />
+        {view === "grid" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map((bus) => {
+              const sc = statusConfig[bus.status]
+              const fill = bus.currentPassengers !== undefined ? (bus.currentPassengers / bus.capacity) * 100 : 0
+              return (
+                <Card key={bus.id} className="hover:border-white/[0.18] transition-colors cursor-pointer" onClick={() => setSelected(bus)}>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-4">
                       <div>
-                        <p className="text-xs font-medium text-zinc-300">{bus.driver}</p>
-                        {bus.route && <p className="text-[11px] text-zinc-600">{bus.route}</p>}
+                        <div className="flex items-center gap-2">
+                          <p className="text-base font-bold text-zinc-100">{bus.code}</p>
+                          <Badge variant={sc.variant}>{sc.label}</Badge>
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-0.5">{bus.model} · {bus.plate}</p>
                       </div>
                     </div>
-                  )}
 
-                  {bus.status === "active" && (
-                    <div className="mb-3">
-                      <div className="flex justify-between text-[11px] mb-1">
-                        <span className="text-zinc-600">Passengers</span>
-                        <span className="text-zinc-400">{bus.currentPassengers}/{bus.capacity}</span>
-                      </div>
-                      <Progress value={fill} colorClass={fill > 85 ? "bg-emerald-500" : "bg-amber-500"} />
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2 mt-3">
-                    <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
-                      <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Inspection</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {bus.inspectionResult === "pass"
-                          ? <TickCircle size={12} color="#34d399" variant="Bold" />
-                          : bus.inspectionResult === "fail"
-                          ? <CloseCircle size={12} color="#f87171" variant="Bold" />
-                          : null}
-                        <p className="text-xs font-medium text-zinc-300 capitalize">{bus.inspectionResult}</p>
-                      </div>
-                      <p className="text-[10px] text-zinc-600 mt-0.5">{bus.lastInspection}</p>
-                    </div>
-                    {bus.fuelLevel !== undefined && (
-                      <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
-                        <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Fuel</p>
-                        <p className="text-sm font-bold text-zinc-200 mt-0.5">{bus.fuelLevel}%</p>
-                        <Progress
-                          value={bus.fuelLevel}
-                          colorClass={bus.fuelLevel < 25 ? "bg-red-500" : bus.fuelLevel < 40 ? "bg-yellow-500" : "bg-emerald-500"}
-                          className="mt-1 h-1"
-                        />
+                    {bus.driver && (
+                      <div className="flex items-center gap-2 mb-3 bg-white/[0.03] rounded-lg p-2 border border-white/[0.05]">
+                        <Avatar name={bus.driver} size="xs" />
+                        <div>
+                          <p className="text-xs font-medium text-zinc-300">{bus.driver}</p>
+                          {bus.route && <p className="text-[11px] text-zinc-600">{bus.route}</p>}
+                        </div>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+
+                    {bus.status === "active" && (
+                      <div className="mb-3">
+                        <div className="flex justify-between text-[11px] mb-1">
+                          <span className="text-zinc-600">Passengers</span>
+                          <span className="text-zinc-400">{bus.currentPassengers}/{bus.capacity}</span>
+                        </div>
+                        <Progress value={fill} colorClass={fill > 85 ? "bg-emerald-500" : "bg-amber-500"} />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
+                        <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Inspection</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {bus.inspectionResult === "pass"
+                            ? <TickCircle size={12} color="#34d399" variant="Bold" />
+                            : bus.inspectionResult === "fail"
+                            ? <CloseCircle size={12} color="#f87171" variant="Bold" />
+                            : null}
+                          <p className="text-xs font-medium text-zinc-300 capitalize">{bus.inspectionResult}</p>
+                        </div>
+                        <p className="text-[10px] text-zinc-600 mt-0.5">{bus.lastInspection}</p>
+                      </div>
+                      {bus.fuelLevel !== undefined && (
+                        <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
+                          <p className="text-[10px] text-zinc-600 uppercase tracking-wider">Fuel</p>
+                          <p className="text-sm font-bold text-zinc-200 mt-0.5">{bus.fuelLevel}%</p>
+                          <Progress
+                            value={bus.fuelLevel}
+                            colorClass={bus.fuelLevel < 25 ? "bg-red-500" : bus.fuelLevel < 40 ? "bg-yellow-500" : "bg-emerald-500"}
+                            className="mt-1 h-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+
+        {view === "table" && (
+          <div className="rounded-xl border border-white/[0.08] overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.08] bg-white/[0.02]">
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Bus</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Driver</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Route</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider w-36">Passengers</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider w-32">Fuel</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Inspection</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {filtered.map((bus) => {
+                  const sc = statusConfig[bus.status]
+                  const fill = bus.currentPassengers !== undefined ? (bus.currentPassengers / bus.capacity) * 100 : 0
+                  return (
+                    <tr
+                      key={bus.id}
+                      className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                      onClick={() => setSelected(bus)}
+                    >
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-semibold text-zinc-200 group-hover:text-zinc-100 transition-colors">{bus.code}</p>
+                        <p className="text-[11px] text-zinc-600">{bus.model} · {bus.plate}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={sc.variant}>{sc.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        {bus.driver ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar name={bus.driver} size="xs" />
+                            <span className="text-xs text-zinc-300">{bus.driver}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-zinc-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-zinc-400">{bus.route ?? "—"}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {bus.status === "active" && bus.currentPassengers !== undefined ? (
+                          <div className="flex items-center gap-2">
+                            <Progress value={fill} colorClass={fill > 85 ? "bg-emerald-500" : "bg-amber-500"} />
+                            <span className="text-[11px] text-zinc-600 whitespace-nowrap">{bus.currentPassengers}/{bus.capacity}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-zinc-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {bus.fuelLevel !== undefined ? (
+                          <div className="flex items-center gap-2">
+                            <Progress
+                              value={bus.fuelLevel}
+                              colorClass={bus.fuelLevel < 25 ? "bg-red-500" : bus.fuelLevel < 40 ? "bg-yellow-500" : "bg-emerald-500"}
+                            />
+                            <span className={cn(
+                              "text-[11px] whitespace-nowrap",
+                              bus.fuelLevel < 25 ? "text-red-400" : bus.fuelLevel < 40 ? "text-yellow-400" : "text-zinc-500"
+                            )}>{bus.fuelLevel}%</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-zinc-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          {bus.inspectionResult === "pass"
+                            ? <TickCircle size={12} color="#34d399" variant="Bold" />
+                            : bus.inspectionResult === "fail"
+                            ? <CloseCircle size={12} color="#f87171" variant="Bold" />
+                            : null}
+                          <span className={cn(
+                            "text-xs capitalize",
+                            bus.inspectionResult === "pass" ? "text-emerald-400" :
+                            bus.inspectionResult === "fail" ? "text-red-400" : "text-zinc-500"
+                          )}>{bus.inspectionResult}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </main>
 
       {/* Register bus wizard sheet */}

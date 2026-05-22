@@ -100,7 +100,7 @@ export default function AlertsPage() {
             : "All clear — no active critical alerts"
         }
       />
-      <main className="flex-1 p-6 space-y-5">
+      <main className="flex-1 p-4 sm:p-6 space-y-5">
         <div className="flex items-center gap-1.5">
           {filterOptions.map((f) => (
             <button
@@ -140,16 +140,30 @@ export default function AlertsPage() {
               )}
             >
               <CardContent className="p-5">
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3 sm:gap-4">
                   <div className="mt-0.5 shrink-0">
                     <SeverityIcon severity={alert.severity} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <p className="text-sm font-semibold text-zinc-100">{alert.title}</p>
-                      {severityBadge(alert.severity)}
-                      <Badge variant="muted">{typeLabels[alert.type]}</Badge>
-                      {alert.acknowledged && <Badge variant="muted">Acknowledged</Badge>}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-zinc-100">{alert.title}</p>
+                        {severityBadge(alert.severity)}
+                        <Badge variant="muted">{typeLabels[alert.type]}</Badge>
+                        {alert.acknowledged && <Badge variant="muted">Acknowledged</Badge>}
+                      </div>
+                      {/* Desktop buttons */}
+                      <div className="hidden sm:flex gap-2 shrink-0">
+                        {!alert.acknowledged && (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => handleAcknowledge(alert.id)}>Acknowledge</Button>
+                            <Button size="sm" variant={alert.severity === "critical" ? "destructive" : "default"} onClick={() => openRespond(alert)}>Respond</Button>
+                          </>
+                        )}
+                        {alert.acknowledged && (
+                          <Button variant="ghost" size="sm" onClick={() => openRespond(alert)}>View</Button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-zinc-400 leading-relaxed">{alert.description}</p>
                     <div className="flex flex-wrap items-center gap-4 mt-3">
@@ -166,20 +180,19 @@ export default function AlertsPage() {
                       {alert.driver && <span className="text-xs text-zinc-600">Driver: {alert.driver}</span>}
                       {alert.bus && <span className="text-xs text-zinc-600">Bus: {alert.bus}</span>}
                     </div>
-                  </div>
-                  {!alert.acknowledged && (
-                    <div className="flex gap-2 shrink-0">
-                      <Button variant="outline" size="sm" onClick={() => handleAcknowledge(alert.id)}>
-                        Acknowledge
-                      </Button>
-                      <Button size="sm" variant={alert.severity === "critical" ? "destructive" : "default"} onClick={() => openRespond(alert)}>
-                        Respond
-                      </Button>
+                    {/* Mobile buttons */}
+                    <div className="sm:hidden flex gap-2 mt-3">
+                      {!alert.acknowledged && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => handleAcknowledge(alert.id)}>Acknowledge</Button>
+                          <Button size="sm" variant={alert.severity === "critical" ? "destructive" : "default"} onClick={() => openRespond(alert)}>Respond</Button>
+                        </>
+                      )}
+                      {alert.acknowledged && (
+                        <Button variant="ghost" size="sm" onClick={() => openRespond(alert)}>View</Button>
+                      )}
                     </div>
-                  )}
-                  {alert.acknowledged && (
-                    <Button variant="ghost" size="sm" onClick={() => openRespond(alert)}>View</Button>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

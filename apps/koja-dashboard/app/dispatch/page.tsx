@@ -137,17 +137,17 @@ export default function DispatchPage() {
           <div className="flex gap-2 mr-1">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={handlePublish}>
               <Send2 size={14} color="currentColor" />
-              Publish All
+              <span className="hidden sm:inline">Publish All</span>
             </Button>
             <Button size="sm" className="gap-1.5" onClick={openNew}>
               <Add size={14} color="currentColor" />
-              New Assignment
+              <span className="hidden sm:inline">New Assignment</span>
             </Button>
           </div>
         }
       />
-      <main className="flex-1 p-6 space-y-5">
-        <div className="grid grid-cols-3 gap-4">
+      <main className="flex-1 p-4 sm:p-6 space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-[#111214] border border-white/[0.07] rounded-xl p-4 flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
               <TickCircle size={16} color="#34d399" variant="Bold" />
@@ -181,33 +181,80 @@ export default function DispatchPage() {
           <CardHeader className="px-5 py-4 border-b border-white/[0.05]">
             <CardTitle>Today’s Assignments</CardTitle>
           </CardHeader>
-          <div className="grid grid-cols-[2fr_1fr_2fr_1fr_1fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider border-b border-white/[0.04]">
-            <span>Driver</span><span>Bus</span><span>Route</span><span>Trips / Dep.</span><span>Status</span><span></span>
+          {/* Desktop table */}
+          <div className="hidden sm:block">
+            <div className="grid grid-cols-[2fr_1fr_2fr_1fr_1fr_auto] gap-4 px-5 py-3 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider border-b border-white/[0.04]">
+              <span>Driver</span><span>Bus</span><span>Route</span><span>Trips / Dep.</span><span>Status</span><span></span>
+            </div>
+            <div className="divide-y divide-white/[0.04]">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={cn(
+                    "grid grid-cols-[2fr_1fr_2fr_1fr_1fr_auto] gap-4 items-center px-5 py-4 hover:bg-white/[0.02] transition-colors",
+                    plan.status === "no_show" && "bg-red-500/[0.03]"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar name={plan.driver} size="sm" />
+                    <div>
+                      <p className="text-sm font-medium text-zinc-200">{plan.driver}</p>
+                      <p className="text-xs text-zinc-600">{plan.driverCode}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-zinc-300">{plan.bus}</p>
+                  <p className="text-sm text-zinc-300">{plan.route}</p>
+                  <div>
+                    <p className="text-sm text-zinc-300">{plan.trips} trips</p>
+                    <p className="text-xs text-zinc-600">Dep {plan.departure}</p>
+                  </div>
+                  <div>{dispatchStatusBadge(plan.status)}</div>
+                  <div className="flex gap-1.5">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(plan)}>Edit</Button>
+                    {plan.status === "no_show" && (
+                      <Button variant="destructive" size="sm" onClick={() => openReplace(plan)}>Replace</Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="divide-y divide-white/[0.04]">
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-white/[0.04]">
             {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={cn(
-                  "grid grid-cols-[2fr_1fr_2fr_1fr_1fr_auto] gap-4 items-center px-5 py-4 hover:bg-white/[0.02] transition-colors",
+                  "px-5 py-4 space-y-3",
                   plan.status === "no_show" && "bg-red-500/[0.03]"
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <Avatar name={plan.driver} size="sm" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={plan.driver} size="sm" />
+                    <div>
+                      <p className="text-sm font-medium text-zinc-200">{plan.driver}</p>
+                      <p className="text-xs text-zinc-600">{plan.driverCode}</p>
+                    </div>
+                  </div>
+                  {dispatchStatusBadge(plan.status)}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
                   <div>
-                    <p className="text-sm font-medium text-zinc-200">{plan.driver}</p>
-                    <p className="text-xs text-zinc-600">{plan.driverCode}</p>
+                    <p className="text-zinc-600 mb-0.5">Bus</p>
+                    <p className="text-zinc-300 font-medium">{plan.bus}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-600 mb-0.5">Trips</p>
+                    <p className="text-zinc-300 font-medium">{plan.trips}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-600 mb-0.5">Dep.</p>
+                    <p className="text-zinc-300 font-medium">{plan.departure}</p>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-zinc-300">{plan.bus}</p>
-                <p className="text-sm text-zinc-300">{plan.route}</p>
-                <div>
-                  <p className="text-sm text-zinc-300">{plan.trips} trips</p>
-                  <p className="text-xs text-zinc-600">Dep {plan.departure}</p>
-                </div>
-                <div>{dispatchStatusBadge(plan.status)}</div>
-                <div className="flex gap-1.5">
+                <p className="text-xs text-zinc-400">{plan.route}</p>
+                <div className="flex gap-2 pt-1">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(plan)}>Edit</Button>
                   {plan.status === "no_show" && (
                     <Button variant="destructive" size="sm" onClick={() => openReplace(plan)}>Replace</Button>
