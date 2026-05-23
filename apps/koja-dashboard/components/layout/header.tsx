@@ -50,11 +50,11 @@ export function Header({ title, subtitle, action }: HeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.06] bg-[#09090b]/90 px-4 sm:px-6 backdrop-blur-sm">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line-soft bg-app-bg/90 px-4 sm:px-6 backdrop-blur-sm">
         <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
           <button
             onClick={openMobile}
-            className="lg:hidden text-zinc-500 hover:text-zinc-300 transition-colors shrink-0"
+            className="lg:hidden text-fg-dim hover:text-fg-muted transition-colors shrink-0"
           >
             <HambergerMenu size={18} color="currentColor" />
           </button>
@@ -69,8 +69,8 @@ export function Header({ title, subtitle, action }: HeaderProps) {
             />
           ) : (
             <div className="min-w-0">
-              <h1 className="text-sm font-semibold text-zinc-100">{title}</h1>
-              {subtitle && <p className="text-xs text-zinc-600 mt-0.5 hidden sm:block">{subtitle}</p>}
+              <h1 className="text-sm font-semibold text-fg">{title}</h1>
+              {subtitle && <p className="text-xs text-fg-dim mt-0.5 hidden sm:block">{subtitle}</p>}
             </div>
           )}
         </div>
@@ -108,13 +108,13 @@ export function Header({ title, subtitle, action }: HeaderProps) {
       {/* Notifications drawer */}
       <div
         className={cn(
-          "fixed top-0 right-0 z-[101] h-full w-[380px] bg-[#0f1011] border-l border-white/[0.07] shadow-2xl flex flex-col transition-transform duration-300 ease-out",
+          "fixed top-0 right-0 z-[101] h-full w-[380px] bg-panel border-l border-line-soft shadow-2xl flex flex-col transition-transform duration-300 ease-out",
           notifOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line-soft shrink-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-zinc-100">Notifications</p>
+            <p className="text-sm font-semibold text-fg">Notifications</p>
             {unreadCount > 0 && (
               <span className="inline-flex items-center justify-center h-4 min-w-[1rem] px-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
                 {unreadCount}
@@ -125,14 +125,14 @@ export function Header({ title, subtitle, action }: HeaderProps) {
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-[11px] text-zinc-500 hover:text-zinc-300 px-2 py-1 rounded transition-colors"
+                className="text-[11px] text-fg-dim hover:text-fg-muted px-2 py-1 rounded transition-colors"
               >
                 Mark all read
               </button>
             )}
             <button
               onClick={() => setNotifOpen(false)}
-              className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+              className="p-1.5 rounded-lg text-fg-dim hover:text-fg-muted hover:bg-[var(--hover-bg)] transition-colors"
             >
               <CloseCircle size={16} color="currentColor" variant="Linear" />
             </button>
@@ -141,16 +141,16 @@ export function Header({ title, subtitle, action }: HeaderProps) {
 
         <div className="flex-1 overflow-y-auto">
           {notifs.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-zinc-600 text-sm">No notifications</div>
+            <div className="flex items-center justify-center h-full text-fg-dim text-sm">No notifications</div>
           ) : (
-            <div className="divide-y divide-white/[0.04]">
+            <div className="divide-y divide-line-soft">
               {notifs.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => markRead(n.id)}
                   className={cn(
-                    "w-full text-left flex gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors",
-                    !n.read && "bg-white/[0.015]"
+                    "w-full text-left flex gap-3 px-5 py-4 hover:bg-[var(--hover-bg)] transition-colors",
+                    !n.read && "bg-[var(--subtle-bg)]"
                   )}
                 >
                   <div className={cn(
@@ -163,15 +163,15 @@ export function Header({ title, subtitle, action }: HeaderProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={cn("text-xs font-semibold leading-snug", n.read ? "text-zinc-400" : "text-zinc-100")}>
+                      <p className={cn("text-xs font-semibold leading-snug", n.read ? "text-fg-muted" : "text-fg")}>
                         {n.title}
                       </p>
                       {!n.read && <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />}
                     </div>
-                    <p className="text-[11px] text-zinc-600 mt-0.5 leading-snug">{n.body}</p>
+                    <p className="text-[11px] text-fg-dim mt-0.5 leading-snug">{n.body}</p>
                     <div className="flex items-center gap-1 mt-1.5">
-                      <Timer1 size={10} color="#52525b" variant="Linear" />
-                      <p className="text-[10px] text-zinc-600">{n.time}</p>
+                      <Timer1 size={10} color="currentColor" variant="Linear" className="text-fg-dim" />
+                      <p className="text-[10px] text-fg-dim">{n.time}</p>
                     </div>
                   </div>
                 </button>
@@ -180,8 +180,8 @@ export function Header({ title, subtitle, action }: HeaderProps) {
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-white/[0.06] shrink-0">
-          <p className="text-[11px] text-zinc-600 text-center">Showing last 5 notifications</p>
+        <div className="px-5 py-3 border-t border-line-soft shrink-0">
+          <p className="text-[11px] text-fg-dim text-center">Showing last 5 notifications</p>
         </div>
       </div>
     </>

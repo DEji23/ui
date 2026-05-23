@@ -16,7 +16,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('koja-theme');if(t==='light')document.documentElement.classList.add('light');}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         <AppLayout>{children}</AppLayout>
       </body>

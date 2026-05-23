@@ -41,26 +41,26 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, classN
       />
       <div
         className={cn(
-          "fixed top-0 right-0 z-[101] h-full w-[520px] bg-[#0f1011] border-l border-white/[0.07] shadow-2xl flex flex-col transition-transform duration-300 ease-out",
+          "fixed top-0 right-0 z-[101] h-full w-[520px] bg-panel border-l border-line-soft shadow-2xl flex flex-col transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "translate-x-full",
           className
         )}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line-soft shrink-0">
           <div>
-            <p className="text-sm font-semibold text-zinc-100">{title}</p>
-            {subtitle && <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>}
+            <p className="text-sm font-semibold text-fg">{title}</p>
+            {subtitle && <p className="text-xs text-fg-muted mt-0.5">{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-600 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+            className="p-1.5 rounded-lg text-fg-dim hover:text-fg-muted hover:bg-[var(--hover-bg)] transition-colors"
           >
             <CloseCircle size={16} color="currentColor" variant="Linear" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">{children}</div>
         {footer && (
-          <div className="flex items-center gap-2 px-6 py-4 border-t border-white/[0.06] shrink-0">
+          <div className="flex items-center gap-2 px-6 py-4 border-t border-line-soft shrink-0">
             {footer}
           </div>
         )}

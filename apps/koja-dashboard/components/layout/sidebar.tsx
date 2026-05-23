@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { useSidebar } from "./app-layout"
+import { useSidebar, useTheme } from "./app-layout"
 import {
   Category,
   People,
@@ -15,6 +15,8 @@ import {
   Setting2,
   ArrowLeft2,
   ArrowRight2,
+  Sun1,
+  Moon,
 } from "iconsax-react"
 
 const navItems = [
@@ -30,6 +32,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const { collapsed, mobileOpen, toggleCollapsed, closeMobile } = useSidebar()
+  const { theme, toggleTheme } = useTheme()
   const settingsActive = pathname === "/settings"
 
   return (
@@ -45,21 +48,21 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/[0.06] bg-[#0c0d0e] transition-all duration-300",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-line-soft bg-sidebar transition-all duration-300",
           collapsed ? "lg:w-[60px]" : "lg:w-[220px]",
           "w-[220px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Logo + collapse toggle */}
-        <div className="flex h-14 items-center gap-3 border-b border-white/[0.06] px-4">
+        <div className="flex h-14 items-center gap-3 border-b border-line-soft px-4">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 shadow-lg shadow-amber-500/30 shrink-0">
             <span className="text-[11px] font-black text-black tracking-tight">K</span>
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-bold text-white tracking-tight leading-none">KOJA</p>
-              <p className="text-[10px] text-zinc-500 leading-none mt-1">Fleet Dashboard</p>
+              <p className="text-[13px] font-bold text-fg tracking-tight leading-none">KOJA</p>
+              <p className="text-[10px] text-fg-dim leading-none mt-1">Fleet Dashboard</p>
             </div>
           )}
           {!collapsed && (
@@ -70,7 +73,7 @@ export function Sidebar() {
           )}
           <button
             onClick={toggleCollapsed}
-            className="hidden lg:flex h-6 w-6 items-center justify-center rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.05] transition-colors ml-auto shrink-0"
+            className="hidden lg:flex h-6 w-6 items-center justify-center rounded-md text-fg-dim hover:text-fg-muted hover:bg-[var(--hover-bg)] transition-colors ml-auto shrink-0"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (
@@ -84,7 +87,7 @@ export function Sidebar() {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
           {!collapsed && (
-            <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+            <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-fg-dim">
               Operations
             </p>
           )}
@@ -102,7 +105,7 @@ export function Sidebar() {
                     collapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-3 py-2",
                     isActive
                       ? "bg-amber-500/10 text-amber-400"
-                      : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200"
+                      : "text-fg-muted hover:bg-[var(--hover-bg)] hover:text-fg"
                   )}
                 >
                   {isActive && !collapsed && (
@@ -138,7 +141,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-white/[0.06] p-2 space-y-0.5">
+        <div className="border-t border-line-soft p-2 space-y-0.5">
           <Link
             href="/settings"
             onClick={closeMobile}
@@ -148,7 +151,7 @@ export function Sidebar() {
               collapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-3 py-2",
               settingsActive
                 ? "bg-amber-500/10 text-amber-400"
-                : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+                : "text-fg-dim hover:bg-[var(--hover-bg)] hover:text-fg-muted"
             )}
           >
             {settingsActive && !collapsed && (
@@ -162,6 +165,25 @@ export function Sidebar() {
             {!collapsed && <span className="text-sm">Settings</span>}
           </Link>
 
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className={cn(
+              "w-full relative flex items-center rounded-lg transition-colors text-fg-dim hover:bg-[var(--hover-bg)] hover:text-fg-muted",
+              collapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-3 py-2"
+            )}
+          >
+            {theme === "dark" ? (
+              <Sun1 size={16} color="currentColor" variant="Linear" />
+            ) : (
+              <Moon size={16} color="currentColor" variant="Linear" />
+            )}
+            {!collapsed && (
+              <span className="text-sm">{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+            )}
+          </button>
+
           {collapsed ? (
             <div className="flex justify-center py-1">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">
@@ -169,13 +191,13 @@ export function Sidebar() {
               </div>
             </div>
           ) : (
-            <div className="mx-1 flex items-center gap-2 rounded-lg bg-white/[0.03] p-2">
+            <div className="mx-1 flex items-center gap-2 rounded-lg bg-[var(--subtle-bg)] p-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold shrink-0">
                 FM
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-zinc-300 leading-none truncate">Fleet Manager</p>
-                <p className="text-[10px] text-zinc-600 leading-none mt-0.5">Admin</p>
+                <p className="text-xs font-medium text-fg-muted leading-none truncate">Fleet Manager</p>
+                <p className="text-[10px] text-fg-dim leading-none mt-0.5">Admin</p>
               </div>
             </div>
           )}
