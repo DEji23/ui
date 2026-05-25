@@ -2,12 +2,13 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AppLayout } from "@/components/layout/app-layout"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "KOJA Fleet Dashboard",
-  description: "Real-time fleet operations management for KOJA Transport",
+  title: "Jehgo Fleet Dashboard",
+  description: "Real-time fleet operations management for Jehgo Transport",
 }
 
 export default function RootLayout({
@@ -16,9 +17,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <AppLayout>{children}</AppLayout>
+        <ThemeProvider>
+          <AppLayout>{children}</AppLayout>
+        </ThemeProvider>
       </body>
     </html>
   )

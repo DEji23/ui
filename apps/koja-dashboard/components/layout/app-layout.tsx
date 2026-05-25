@@ -36,7 +36,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         closeMobile: () => setMobileOpen(false),
       }}
     >
-      <div className="flex min-h-screen bg-[#09090b]">
+      <div className="flex min-h-screen bg-[var(--bg)]">
         <Sidebar />
         <div
           className={cn(

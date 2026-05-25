@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("bg-[#111214] border border-white/[0.07] rounded-xl", className)} {...props} />
+    <div className={cn("bg-[var(--bg-card)] dark:border-white/[0.07] border-zinc-200 border rounded-xl", className)} {...props} />
   )
 }
 
@@ -23,6 +23,6 @@ export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDi
 
 export function CardFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex items-center p-5 pt-0 border-t border-white/[0.06] mt-4", className)} {...props} />
+    <div className={cn("flex items-center p-5 pt-0 dark:border-white/[0.06] border-zinc-200 border-t mt-4", className)} {...props} />
   )
 }
