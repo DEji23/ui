@@ -1,11 +1,13 @@
-export type DriverStatus = "active" | "offline" | "late" | "on_leave" | "blocked"
-export type BusStatus = "active" | "available" | "blocked" | "maintenance"
+export type DriverStatus = "active" | "offline" | "late" | "on_leave" | "blocked" | "deactivated"
+export type BusStatus = "active" | "available" | "blocked" | "maintenance" | "decommissioned"
 export type AlertType = "breakdown" | "late_start" | "code_red" | "inspection_fail" | "cash_discrepancy" | "no_show"
 export type AlertSeverity = "critical" | "warning" | "info"
 export type TripStatus = "scheduled" | "boarding" | "en_route" | "completed" | "cancelled"
 export type ReconciliationStatus = "match" | "discrepancy" | "pending"
 export type LeaveType = "annual" | "sick" | "emergency" | "personal"
 export type LeaveStatus = "pending" | "approved" | "declined" | "modified"
+export type MaintenanceType = "routine" | "tyre" | "engine" | "brake" | "electrical" | "other"
+export type BusType = "coaster" | "hiace" | "sienna" | "brt" | "minibus"
 
 export interface Driver {
   id: string
@@ -22,6 +24,12 @@ export interface Driver {
   shiftStart?: string
   complianceStatus: "clear" | "warning" | "blocked"
   hoursThisWeek: number
+  verificationStatus?: "pending" | "verified" | "rejected"
+  licenseNumber?: string
+  licenseExpiry?: string
+  address?: string
+  joinDate?: string
+  nextOfKin?: string
 }
 
 export interface Bus {
@@ -33,10 +41,44 @@ export interface Bus {
   route?: string
   driver?: string
   capacity: number
+  standingAllowed?: boolean
   currentPassengers?: number
   lastInspection: string
   inspectionResult: "pass" | "fail" | "pending"
   fuelLevel?: number
+  // Identity
+  vin?: string
+  busType?: BusType
+  manufacturer?: string
+  year?: number
+  colour?: string
+  busUniqueCode?: string
+  // Compliance
+  insuranceExpiry?: string
+  roadworthinessExpiry?: string
+  vehicleLicenseExpiry?: string
+  // Device & QR
+  gpsDeviceId?: string
+  gpsPaired?: boolean
+  gpsLastPing?: string
+  driverAppPaired?: boolean
+  qrActive?: boolean
+  // Operations
+  nextMaintenanceDue?: string
+  lastSeen?: string
+}
+
+export interface MaintenanceRecord {
+  id: string
+  busId: string
+  busCode: string
+  type: MaintenanceType
+  date: string
+  nextDue: string
+  cost: number
+  vendor: string
+  notes?: string
+  status: "completed" | "scheduled" | "overdue"
 }
 
 export interface Alert {
@@ -110,25 +152,138 @@ export interface RevenueDataPoint {
 }
 
 export const drivers: Driver[] = [
-  { id: "d1", name: "Ibrahim Musa", code: "KJA-001", phone: "080 2345 6789", status: "active", route: "Lagos Island – Oshodi", bus: "BUS-07", currentPassengers: 18, tripsToday: 2, earningsToday: 45000, rating: 4.8, shiftStart: "06:00", complianceStatus: "clear", hoursThisWeek: 28 },
-  { id: "d2", name: "Tunde Adeleke", code: "KJA-002", phone: "080 3456 7890", status: "active", route: "Oshodi – Ikeja", bus: "BUS-12", currentPassengers: 22, tripsToday: 3, earningsToday: 54000, rating: 4.6, shiftStart: "07:00", complianceStatus: "clear", hoursThisWeek: 24 },
-  { id: "d3", name: "Chukwuemeka Obi", code: "KJA-003", phone: "080 4567 8901", status: "late", tripsToday: 0, earningsToday: 0, rating: 4.2, complianceStatus: "warning", hoursThisWeek: 38 },
-  { id: "d4", name: "Fatima Garba", code: "KJA-004", phone: "080 5678 9012", status: "active", route: "Lagos Island – Lekki", bus: "BUS-09", currentPassengers: 25, tripsToday: 2, earningsToday: 62500, rating: 4.9, shiftStart: "06:30", complianceStatus: "clear", hoursThisWeek: 22 },
-  { id: "d5", name: "Seun Adeyemi", code: "KJA-005", phone: "080 6789 0123", status: "offline", tripsToday: 4, earningsToday: 92000, rating: 4.7, complianceStatus: "clear", hoursThisWeek: 48 },
-  { id: "d6", name: "Aminu Danbaba", code: "KJA-006", phone: "080 7890 1234", status: "active", route: "Berger – Oshodi", bus: "BUS-02", currentPassengers: 14, tripsToday: 1, earningsToday: 35000, rating: 4.3, shiftStart: "08:00", complianceStatus: "clear", hoursThisWeek: 16 },
-  { id: "d7", name: "Blessing Okafor", code: "KJA-007", phone: "080 8901 2345", status: "on_leave", tripsToday: 0, earningsToday: 0, rating: 4.5, complianceStatus: "clear", hoursThisWeek: 0 },
-  { id: "d8", name: "Emeka Nwosu", code: "KJA-008", phone: "080 9012 3456", status: "blocked", tripsToday: 0, earningsToday: 0, rating: 3.8, complianceStatus: "blocked", hoursThisWeek: 12 },
+  { id: "d1", name: "Ibrahim Musa", code: "KJA-001", phone: "080 2345 6789", status: "active", route: "Lagos Island – Oshodi", bus: "BUS-07", currentPassengers: 18, tripsToday: 2, earningsToday: 45000, rating: 4.8, shiftStart: "06:00", complianceStatus: "clear", hoursThisWeek: 28, verificationStatus: "verified", licenseNumber: "FED-2020-001234", licenseExpiry: "2027-08-15", joinDate: "2023-02-10", address: "14 Adeniyi Jones, Ikeja, Lagos" },
+  { id: "d2", name: "Tunde Adeleke", code: "KJA-002", phone: "080 3456 7890", status: "active", route: "Oshodi – Ikeja", bus: "BUS-12", currentPassengers: 22, tripsToday: 3, earningsToday: 54000, rating: 4.6, shiftStart: "07:00", complianceStatus: "clear", hoursThisWeek: 24, verificationStatus: "verified", licenseNumber: "FED-2019-005678", licenseExpiry: "2027-03-20", joinDate: "2022-11-15" },
+  { id: "d3", name: "Chukwuemeka Obi", code: "KJA-003", phone: "080 4567 8901", status: "late", tripsToday: 0, earningsToday: 0, rating: 4.2, complianceStatus: "warning", hoursThisWeek: 38, verificationStatus: "pending", licenseNumber: "FED-2018-009012", licenseExpiry: "2026-06-30", joinDate: "2023-08-01" },
+  { id: "d4", name: "Fatima Garba", code: "KJA-004", phone: "080 5678 9012", status: "active", route: "Lagos Island – Lekki", bus: "BUS-09", currentPassengers: 25, tripsToday: 2, earningsToday: 62500, rating: 4.9, shiftStart: "06:30", complianceStatus: "clear", hoursThisWeek: 22, verificationStatus: "verified", licenseNumber: "FED-2021-003456", licenseExpiry: "2028-01-10", joinDate: "2021-06-20", nextOfKin: "Malam Garba Aliyu" },
+  { id: "d5", name: "Seun Adeyemi", code: "KJA-005", phone: "080 6789 0123", status: "offline", tripsToday: 4, earningsToday: 92000, rating: 4.7, complianceStatus: "clear", hoursThisWeek: 48, verificationStatus: "verified", licenseNumber: "FED-2017-007890", licenseExpiry: "2027-11-05", joinDate: "2020-03-12" },
+  { id: "d6", name: "Aminu Danbaba", code: "KJA-006", phone: "080 7890 1234", status: "active", route: "Berger – Oshodi", bus: "BUS-02", currentPassengers: 14, tripsToday: 1, earningsToday: 35000, rating: 4.3, shiftStart: "08:00", complianceStatus: "clear", hoursThisWeek: 16, verificationStatus: "verified", licenseNumber: "FED-2022-002345", licenseExpiry: "2026-09-18", joinDate: "2024-01-08", address: "22 Berger Estate, Ojodu, Lagos" },
+  { id: "d7", name: "Blessing Okafor", code: "KJA-007", phone: "080 8901 2345", status: "on_leave", tripsToday: 0, earningsToday: 0, rating: 4.5, complianceStatus: "clear", hoursThisWeek: 0, verificationStatus: "verified", licenseNumber: "FED-2020-006789", licenseExpiry: "2027-06-25", joinDate: "2022-07-30", nextOfKin: "Mrs. Ngozi Okafor" },
+  { id: "d8", name: "Emeka Nwosu", code: "KJA-008", phone: "080 9012 3456", status: "blocked", tripsToday: 0, earningsToday: 0, rating: 3.8, complianceStatus: "blocked", hoursThisWeek: 12, verificationStatus: "rejected", licenseNumber: "FED-2016-004321", licenseExpiry: "2025-12-31", joinDate: "2021-09-15" },
 ]
 
 export const buses: Bus[] = [
-  { id: "b1", code: "BUS-01", model: "Toyota Coaster", plate: "LND 234 GE", status: "available", capacity: 30, lastInspection: "Today 05:45", inspectionResult: "pass", fuelLevel: 85 },
-  { id: "b2", code: "BUS-02", model: "Toyota Coaster", plate: "LND 678 GE", status: "active", route: "Berger – Oshodi", driver: "Aminu Danbaba", capacity: 30, currentPassengers: 14, lastInspection: "Today 07:50", inspectionResult: "pass", fuelLevel: 62 },
-  { id: "b3", code: "BUS-03", model: "Higer KLQ6109", plate: "LND 112 GE", status: "maintenance", capacity: 49, lastInspection: "Yesterday", inspectionResult: "fail", fuelLevel: 20 },
-  { id: "b4", code: "BUS-04", model: "Toyota Coaster", plate: "LND 345 GE", status: "available", capacity: 30, lastInspection: "Today 06:00", inspectionResult: "pass", fuelLevel: 90 },
-  { id: "b5", code: "BUS-05", model: "Toyota Sienna", plate: "LND 567 GE", status: "blocked", capacity: 7, lastInspection: "Today 06:15", inspectionResult: "fail", fuelLevel: 45 },
-  { id: "b6", code: "BUS-07", model: "Toyota Coaster", plate: "LND 901 GE", status: "active", route: "Lagos Island – Oshodi", driver: "Ibrahim Musa", capacity: 30, currentPassengers: 18, lastInspection: "Today 05:55", inspectionResult: "pass", fuelLevel: 55 },
-  { id: "b7", code: "BUS-09", model: "Higer KLQ6109", plate: "LND 123 GE", status: "active", route: "Lagos Island – Lekki", driver: "Fatima Garba", capacity: 30, currentPassengers: 25, lastInspection: "Today 06:20", inspectionResult: "pass", fuelLevel: 70 },
-  { id: "b8", code: "BUS-12", model: "Toyota Coaster", plate: "LND 456 GE", status: "active", route: "Oshodi – Ikeja", driver: "Tunde Adeleke", capacity: 30, currentPassengers: 22, lastInspection: "Today 06:45", inspectionResult: "pass", fuelLevel: 48 },
+  {
+    id: "b1", code: "BUS-01", model: "Toyota Coaster", plate: "LND 234 GE",
+    status: "available", capacity: 30, lastInspection: "Today 05:45", inspectionResult: "pass", fuelLevel: 85,
+    vin: "JT2BF22K4W0123456", busType: "coaster", manufacturer: "Toyota", year: 2020, colour: "White",
+    busUniqueCode: "B-01-JEHGO",
+    insuranceExpiry: "2026-08-15", roadworthinessExpiry: "2026-11-30", vehicleLicenseExpiry: "2026-09-20",
+    gpsDeviceId: "GPS-001", gpsPaired: true, gpsLastPing: "2 min ago", driverAppPaired: true, qrActive: true,
+    nextMaintenanceDue: "2026-06-15", lastSeen: "10:22 AM",
+  },
+  {
+    id: "b2", code: "BUS-02", model: "Toyota Coaster", plate: "LND 678 GE",
+    status: "active", route: "Berger – Oshodi", driver: "Aminu Danbaba", capacity: 30, currentPassengers: 14,
+    lastInspection: "Today 07:50", inspectionResult: "pass", fuelLevel: 62,
+    vin: "JT2BF22K4W0234567", busType: "coaster", manufacturer: "Toyota", year: 2019, colour: "White",
+    busUniqueCode: "B-02-JEHGO",
+    insuranceExpiry: "2026-07-10", roadworthinessExpiry: "2026-10-15", vehicleLicenseExpiry: "2026-08-05",
+    gpsDeviceId: "GPS-002", gpsPaired: true, gpsLastPing: "Live", driverAppPaired: true, qrActive: true,
+    nextMaintenanceDue: "2026-07-01", lastSeen: "Live",
+  },
+  {
+    id: "b3", code: "BUS-03", model: "Higer KLQ6109", plate: "LND 112 GE",
+    status: "maintenance", capacity: 49, lastInspection: "Yesterday", inspectionResult: "fail", fuelLevel: 20,
+    vin: "LHGFA16516Y000123", busType: "brt", manufacturer: "Higer", year: 2018, colour: "Yellow",
+    busUniqueCode: "B-03-JEHGO",
+    insuranceExpiry: "2026-05-28", roadworthinessExpiry: "2026-04-30", vehicleLicenseExpiry: "2026-06-01",
+    gpsDeviceId: "GPS-003", gpsPaired: false, gpsLastPing: "2 days ago", driverAppPaired: false, qrActive: true,
+    nextMaintenanceDue: "Overdue", lastSeen: "Yesterday",
+  },
+  {
+    id: "b4", code: "BUS-04", model: "Toyota Coaster", plate: "LND 345 GE",
+    status: "available", capacity: 30, lastInspection: "Today 06:00", inspectionResult: "pass", fuelLevel: 90,
+    vin: "JT2BF22K4W0345678", busType: "coaster", manufacturer: "Toyota", year: 2021, colour: "White",
+    busUniqueCode: "B-04-JEHGO",
+    insuranceExpiry: "2026-12-01", roadworthinessExpiry: "2026-12-15", vehicleLicenseExpiry: "2026-11-10",
+    gpsDeviceId: "GPS-004", gpsPaired: true, gpsLastPing: "5 min ago", driverAppPaired: true, qrActive: true,
+    nextMaintenanceDue: "2026-09-01", lastSeen: "9:45 AM",
+  },
+  {
+    id: "b5", code: "BUS-05", model: "Toyota Sienna", plate: "LND 567 GE",
+    status: "blocked", capacity: 7, lastInspection: "Today 06:15", inspectionResult: "fail", fuelLevel: 45,
+    vin: "5TDZK23C69S123456", busType: "sienna", manufacturer: "Toyota", year: 2017, colour: "Silver",
+    busUniqueCode: "B-05-JEHGO",
+    insuranceExpiry: "2026-06-08", roadworthinessExpiry: "2026-05-20", vehicleLicenseExpiry: "2026-07-15",
+    gpsDeviceId: undefined, gpsPaired: false, gpsLastPing: undefined, driverAppPaired: false, qrActive: false,
+    nextMaintenanceDue: "2026-06-01", lastSeen: "6:15 AM",
+  },
+  {
+    id: "b6", code: "BUS-07", model: "Toyota Coaster", plate: "LND 901 GE",
+    status: "active", route: "Lagos Island – Oshodi", driver: "Ibrahim Musa", capacity: 30, currentPassengers: 18,
+    lastInspection: "Today 05:55", inspectionResult: "pass", fuelLevel: 55,
+    vin: "JT2BF22K4W0456789", busType: "coaster", manufacturer: "Toyota", year: 2020, colour: "White",
+    busUniqueCode: "B-07-JEHGO",
+    insuranceExpiry: "2026-09-15", roadworthinessExpiry: "2026-11-01", vehicleLicenseExpiry: "2026-10-20",
+    gpsDeviceId: "GPS-007", gpsPaired: true, gpsLastPing: "Live", driverAppPaired: true, qrActive: true,
+    nextMaintenanceDue: "2026-08-10", lastSeen: "Live",
+  },
+  {
+    id: "b7", code: "BUS-09", model: "Higer KLQ6109", plate: "LND 123 GE",
+    status: "active", route: "Lagos Island – Lekki", driver: "Fatima Garba", capacity: 30, currentPassengers: 25,
+    lastInspection: "Today 06:20", inspectionResult: "pass", fuelLevel: 70,
+    vin: "LHGFA16516Y000234", busType: "brt", manufacturer: "Higer", year: 2019, colour: "Blue",
+    busUniqueCode: "B-09-JEHGO",
+    insuranceExpiry: "2026-10-01", roadworthinessExpiry: "2027-01-15", vehicleLicenseExpiry: "2026-09-30",
+    gpsDeviceId: "GPS-009", gpsPaired: true, gpsLastPing: "Live", driverAppPaired: true, qrActive: true,
+    nextMaintenanceDue: "2026-07-20", lastSeen: "Live",
+  },
+  {
+    id: "b8", code: "BUS-12", model: "Toyota Coaster", plate: "LND 456 GE",
+    status: "active", route: "Oshodi – Ikeja", driver: "Tunde Adeleke", capacity: 30, currentPassengers: 22,
+    lastInspection: "Today 06:45", inspectionResult: "pass", fuelLevel: 48,
+    vin: "JT2BF22K4W0567890", busType: "coaster", manufacturer: "Toyota", year: 2020, colour: "White",
+    busUniqueCode: "B-12-JEHGO",
+    insuranceExpiry: "2026-08-20", roadworthinessExpiry: "2026-10-05", vehicleLicenseExpiry: "2026-09-10",
+    gpsDeviceId: "GPS-012", gpsPaired: true, gpsLastPing: "Live", driverAppPaired: true, qrActive: true,
+    nextMaintenanceDue: "2026-06-25", lastSeen: "Live",
+  },
+]
+
+export const maintenanceRecords: MaintenanceRecord[] = [
+  {
+    id: "m1", busId: "b3", busCode: "BUS-03",
+    type: "engine", date: "2026-05-22", nextDue: "2026-11-22",
+    cost: 185000, vendor: "Seun Auto Works",
+    notes: "Engine oil, air filter, cooling system flush",
+    status: "completed",
+  },
+  {
+    id: "m2", busId: "b1", busCode: "BUS-01",
+    type: "routine", date: "2026-04-10", nextDue: "2026-06-15",
+    cost: 45000, vendor: "Toyota Service Centre",
+    notes: "30,000 km routine service",
+    status: "completed",
+  },
+  {
+    id: "m3", busId: "b2", busCode: "BUS-02",
+    type: "tyre", date: "2026-03-18", nextDue: "2026-07-01",
+    cost: 72000, vendor: "Tyre King Ikeja",
+    notes: "All four tyres replaced — front pair showing wear",
+    status: "completed",
+  },
+  {
+    id: "m4", busId: "b6", busCode: "BUS-07",
+    type: "brake", date: "2026-02-28", nextDue: "2026-08-10",
+    cost: 38000, vendor: "Ade Brake Works",
+    notes: "Brake pads and discs replaced front and rear",
+    status: "completed",
+  },
+  {
+    id: "m5", busId: "b5", busCode: "BUS-05",
+    type: "electrical", date: "2026-05-10", nextDue: "2026-06-01",
+    cost: 28000, vendor: "Spark Auto Electrics",
+    notes: "Alternator replaced, battery terminals cleaned",
+    status: "overdue",
+  },
+  {
+    id: "m6", busId: "b8", busCode: "BUS-12",
+    type: "routine", date: "2026-01-15", nextDue: "2026-06-25",
+    cost: 55000, vendor: "Toyota Service Centre",
+    notes: "Scheduled 60,000 km service",
+    status: "scheduled",
+  },
 ]
 
 export const alerts: Alert[] = [
@@ -180,4 +335,73 @@ export const revenueData: RevenueDataPoint[] = [
   { date: "Fri", revenue: 621000, passengers: 1142 },
   { date: "Sat", revenue: 587000, passengers: 1079 },
   { date: "Today", revenue: 289000, passengers: 531 },
+]
+
+export interface NextDeparture {
+  route: string
+  time: string
+  bus: string
+  driver: string
+}
+
+export const nextDepartures: NextDeparture[] = [
+  { route: "Lagos Island → Oshodi", time: "09:30 AM", bus: "BUS-07", driver: "Ibrahim Musa" },
+  { route: "Oshodi → Ikeja", time: "09:45 AM", bus: "BUS-12", driver: "Tunde Adeleke" },
+  { route: "Lagos Island → Lekki", time: "10:00 AM", bus: "BUS-09", driver: "Fatima Garba" },
+]
+
+export const tripsCompletedToday = 4
+export const pendingSettlementsAmount = 210000
+
+export type DriverIncidentType =
+  | "complaint"
+  | "reckless_driving"
+  | "fraud_suspicion"
+  | "late_start"
+  | "route_deviation"
+  | "no_show"
+  | "accident"
+
+export interface DriverIncident {
+  id: string
+  driverId: string
+  driverCode: string
+  type: DriverIncidentType
+  description: string
+  date: string
+  severity: "critical" | "warning" | "info"
+  status: "open" | "resolved" | "dismissed"
+}
+
+export const driverIncidents: DriverIncident[] = [
+  {
+    id: "di1", driverId: "d3", driverCode: "KJA-003",
+    type: "late_start", description: "Did not accept assigned shift 38 minutes past scheduled departure. No prior notification given.",
+    date: "2026-05-25", severity: "warning", status: "open",
+  },
+  {
+    id: "di2", driverId: "d5", driverCode: "KJA-005",
+    type: "complaint", description: "Passenger reported rude behaviour and refusal to give correct change on the Berger–Oshodi route.",
+    date: "2026-05-22", severity: "info", status: "resolved",
+  },
+  {
+    id: "di3", driverId: "d8", driverCode: "KJA-008",
+    type: "fraud_suspicion", description: "Cash discrepancy of ₦22,500 found across 3 consecutive trips. Under-declared passenger count suspected.",
+    date: "2026-05-20", severity: "critical", status: "open",
+  },
+  {
+    id: "di4", driverId: "d2", driverCode: "KJA-002",
+    type: "route_deviation", description: "Bus took an unofficial route at Oshodi junction without clearance. Route restored after 12 minutes.",
+    date: "2026-05-18", severity: "warning", status: "dismissed",
+  },
+  {
+    id: "di5", driverId: "d6", driverCode: "KJA-006",
+    type: "no_show", description: "Failed to appear for assigned morning shift on 2026-05-15 without prior notification. Duty reassigned to backup driver.",
+    date: "2026-05-15", severity: "warning", status: "resolved",
+  },
+  {
+    id: "di6", driverId: "d1", driverCode: "KJA-001",
+    type: "complaint", description: "Minor dispute with passenger over change amount. Resolved on-site. Passenger did not escalate.",
+    date: "2026-05-10", severity: "info", status: "resolved",
+  },
 ]

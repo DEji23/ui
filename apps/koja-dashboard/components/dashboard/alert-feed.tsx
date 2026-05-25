@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Danger, Warning2, InfoCircle } from "iconsax-react"
+import { Danger, Warning2, InfoCircle, Bus, People } from "iconsax-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { alerts, type Alert } from "@/lib/data"
@@ -16,13 +16,62 @@ function alertBg(severity: Alert["severity"]) {
   return "bg-blue-500/[0.06] hover:bg-blue-500/[0.10]"
 }
 
+function severityBadge(severity: Alert["severity"]) {
+  if (severity === "critical") return <span className="text-[10px] font-semibold text-red-400 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">Critical</span>
+  if (severity === "warning") return <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">Warning</span>
+  return <span className="text-[10px] font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded px-1.5 py-0.5">Info</span>
+}
+
+function alertActions(alert: Alert) {
+  const base = "text-[10px] font-medium px-2 py-1 rounded bg-[var(--hover-bg)] border border-line-soft text-fg-muted hover:text-fg hover:border-line-soft/80 transition-colors"
+  if (alert.type === "breakdown") {
+    return (
+      <div className="flex items-center gap-1.5 mt-2">
+        <Link href="/fleet"><button className={base}>View Bus</button></Link>
+        <Link href="/dispatch"><button className={base}>Assign Replacement</button></Link>
+      </div>
+    )
+  }
+  if (alert.type === "late_start" || alert.type === "no_show") {
+    return (
+      <div className="flex items-center gap-1.5 mt-2">
+        <Link href="/drivers"><button className={base}>View Driver</button></Link>
+        <Link href="/dispatch"><button className={base}>Replace Driver</button></Link>
+      </div>
+    )
+  }
+  if (alert.type === "cash_discrepancy") {
+    return (
+      <div className="flex items-center gap-1.5 mt-2">
+        <Link href="/reconciliation"><button className={base}>View Report</button></Link>
+      </div>
+    )
+  }
+  if (alert.type === "inspection_fail") {
+    return (
+      <div className="flex items-center gap-1.5 mt-2">
+        <Link href="/fleet"><button className={base}>View Bus</button></Link>
+      </div>
+    )
+  }
+  if (alert.type === "code_red") {
+    return (
+      <div className="flex items-center gap-1.5 mt-2">
+        <Link href="/drivers"><button className={base}>View Driver</button></Link>
+        <Link href="/alerts"><button className={base}>Full Details</button></Link>
+      </div>
+    )
+  }
+  return null
+}
+
 export function AlertFeed() {
   const unack = alerts.filter((a) => !a.acknowledged)
   const items = [...unack, ...alerts.filter((a) => a.acknowledged)].slice(0, 5)
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
+    <Card className="flex flex-col">
+      <CardHeader className="border-b border-line-soft">
         <div className="flex items-center justify-between">
           <CardTitle>Live Alerts</CardTitle>
           {unack.length > 0 && (
@@ -32,26 +81,30 @@ export function AlertFeed() {
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 space-y-1.5 px-3 pb-3">
+      <CardContent className="flex-1 space-y-1.5 px-3 pb-3 pt-3">
         {items.map((alert) => (
           <div
             key={alert.id}
             className={cn(
               "rounded-lg p-3 transition-colors",
               alertBg(alert.severity),
-              alert.acknowledged && "opacity-50"
+              alert.acknowledged && "opacity-60"
             )}
           >
             <div className="flex items-start gap-2">
-              <div className="mt-0.5">
+              <div className="mt-0.5 shrink-0">
                 <AlertIcon severity={alert.severity} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-zinc-200 leading-none">{alert.title}</p>
-                <p className="text-[11px] text-zinc-500 mt-1 leading-snug line-clamp-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-xs font-semibold text-fg leading-none">{alert.title}</p>
+                  {severityBadge(alert.severity)}
+                </div>
+                <p className="text-[11px] text-fg-muted mt-1 leading-snug line-clamp-2">
                   {alert.description}
                 </p>
-                <p className="text-[10px] text-zinc-600 mt-1">{alert.timestamp}</p>
+                <p className="text-[10px] text-fg-dim mt-1">{alert.timestamp}</p>
+                {!alert.acknowledged && alertActions(alert)}
               </div>
             </div>
           </div>

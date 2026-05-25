@@ -17,10 +17,10 @@ import { formatNGN } from "@/lib/utils"
 function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-[#1a1b1e] border border-white/10 rounded-lg p-3 shadow-xl">
-      <p className="text-xs font-medium text-zinc-300 mb-2">{label}</p>
+    <div className="bg-panel border border-line-soft rounded-lg p-3 shadow-xl">
+      <p className="text-xs font-medium text-fg-muted mb-2">{label}</p>
       <p className="text-sm font-semibold text-amber-400">{formatNGN(payload[0]?.value ?? 0)}</p>
-      <p className="text-xs text-zinc-500">{(payload[1]?.value ?? 0).toLocaleString()} passengers</p>
+      <p className="text-xs text-fg-dim">{(payload[1]?.value ?? 0).toLocaleString()} passengers</p>
     </div>
   )
 }
@@ -32,8 +32,8 @@ export function RevenueChart() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Revenue Trend</CardTitle>
-            <p className="text-xl font-bold text-zinc-100 mt-1">₦3.74M</p>
-            <p className="text-xs text-zinc-500">This week (Mon–today)</p>
+            <p className="text-xl font-bold text-fg mt-1">₦3.74M</p>
+            <p className="text-xs text-fg-muted">This week (Mon–today)</p>
           </div>
           <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1">
             <span>↑ 8.4%</span>
@@ -52,19 +52,19 @@ export function RevenueChart() {
             </defs>
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="rgba(255,255,255,0.04)"
+              stroke="var(--line-soft)"
               horizontal
               vertical={false}
             />
             <XAxis
               dataKey="date"
-              tick={{ fill: "#52525b", fontSize: 11 }}
+              tick={{ fill: "var(--fg-dim)", fontSize: 11 }}
               axisLine={false}
               tickLine={false}
               dy={8}
             />
             <YAxis
-              tick={{ fill: "#52525b", fontSize: 11 }}
+              tick={{ fill: "var(--fg-dim)", fontSize: 11 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => formatNGN(v as number)}

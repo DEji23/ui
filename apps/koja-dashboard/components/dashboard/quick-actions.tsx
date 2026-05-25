@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { UserAdd, Bus, Send2, Warning2 } from "iconsax-react"
+import { UserAdd, Bus, Send2, Warning2, DollarCircle, CalendarAdd } from "iconsax-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
@@ -21,12 +21,28 @@ const ACTIONS = [
     iconBg: "bg-emerald-500/10",
   },
   {
-    label: "Publish Dispatch",
+    label: "Create Schedule",
+    description: "Plan duties and assign routes for today",
+    href: "/dispatch",
+    icon: CalendarAdd,
+    iconColor: "#a78bfa",
+    iconBg: "bg-purple-500/10",
+  },
+  {
+    label: "Dispatch Today",
     description: "Activate today's pending assignments",
     href: "/dispatch",
     icon: Send2,
     iconColor: "#60a5fa",
     iconBg: "bg-blue-500/10",
+  },
+  {
+    label: "View Settlements",
+    description: "Review earnings and reconciliations",
+    href: "/reconciliation",
+    icon: DollarCircle,
+    iconColor: "#fb923c",
+    iconBg: "bg-orange-500/10",
   },
   {
     label: "View Alerts",
@@ -41,7 +57,7 @@ const ACTIONS = [
 export function QuickActions() {
   return (
     <Card>
-      <CardHeader className="px-5 py-4 border-b border-white/[0.05]">
+      <CardHeader className="px-5 py-4 border-b border-line-soft">
         <CardTitle>Quick Actions</CardTitle>
       </CardHeader>
       <CardContent className="p-3 grid grid-cols-2 gap-2">
@@ -51,14 +67,14 @@ export function QuickActions() {
             <Link
               key={a.label}
               href={a.href}
-              className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 hover:bg-white/[0.06] hover:border-white/[0.12] transition-all group"
+              className="flex items-center gap-3 rounded-xl bg-[var(--subtle-bg)] border border-line-soft p-3.5 hover:bg-[var(--hover-bg)] hover:border-line-soft/80 transition-all group"
             >
               <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", a.iconBg)}>
                 <Icon size={16} color={a.iconColor} variant="Bold" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-zinc-200 group-hover:text-zinc-100 leading-none">{a.label}</p>
-                <p className="text-[10px] text-zinc-600 mt-1 leading-snug">{a.description}</p>
+                <p className="text-xs font-semibold text-fg group-hover:text-fg leading-none">{a.label}</p>
+                <p className="text-[10px] text-fg-dim mt-1 leading-snug">{a.description}</p>
               </div>
             </Link>
           )
