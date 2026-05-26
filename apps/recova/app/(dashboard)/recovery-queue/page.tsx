@@ -52,7 +52,7 @@ export default function RecoveryQueuePage() {
       list = list.filter(l =>
         l.borrower.toLowerCase().includes(q) ||
         l.loanId.toLowerCase().includes(q) ||
-        l.dro.toLowerCase().includes(q)
+        l.dro?.toLowerCase().includes(q)
       )
     }
     return list
