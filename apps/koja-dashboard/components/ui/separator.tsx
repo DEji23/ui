@@ -9,7 +9,7 @@ export function Separator({ className, orientation = "horizontal", ...props }: S
   return (
     <div
       className={cn(
-        "bg-white/[0.07] shrink-0",
+        "bg-line-soft shrink-0",
         orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
         className
       )}

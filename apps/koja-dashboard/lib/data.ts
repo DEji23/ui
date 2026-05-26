@@ -1,4 +1,5 @@
-export type DriverStatus = "active" | "offline" | "late" | "on_leave" | "blocked"
+export type DriverStatus = "active" | "offline" | "late" | "on_leave" | "blocked" | "pending"
+export type VerificationStatus = "unverified" | "pending_docs" | "verified" | "rejected"
 export type BusStatus = "active" | "available" | "blocked" | "maintenance"
 export type AlertType = "breakdown" | "late_start" | "code_red" | "inspection_fail" | "cash_discrepancy" | "no_show"
 export type AlertSeverity = "critical" | "warning" | "info"
@@ -22,6 +23,18 @@ export interface Driver {
   shiftStart?: string
   complianceStatus: "clear" | "warning" | "blocked"
   hoursThisWeek: number
+  // Extended fields
+  licenseNumber?: string
+  licenseExpiry?: string   // "YYYY-MM-DD"
+  address?: string
+  nin?: string
+  verificationStatus?: VerificationStatus
+  joinedDate?: string      // "YYYY-MM-DD"
+  onTimeRate?: number      // 0-100
+  completionRate?: number  // 0-100
+  incidentCount?: number
+  busId?: string           // for the assigned bus reference
+  assignmentType?: "primary" | "backup" | "temporary"
 }
 
 export interface Bus {
@@ -110,14 +123,15 @@ export interface RevenueDataPoint {
 }
 
 export const drivers: Driver[] = [
-  { id: "d1", name: "Ibrahim Musa", code: "KJA-001", phone: "080 2345 6789", status: "active", route: "Lagos Island – Oshodi", bus: "BUS-07", currentPassengers: 18, tripsToday: 2, earningsToday: 45000, rating: 4.8, shiftStart: "06:00", complianceStatus: "clear", hoursThisWeek: 28 },
-  { id: "d2", name: "Tunde Adeleke", code: "KJA-002", phone: "080 3456 7890", status: "active", route: "Oshodi – Ikeja", bus: "BUS-12", currentPassengers: 22, tripsToday: 3, earningsToday: 54000, rating: 4.6, shiftStart: "07:00", complianceStatus: "clear", hoursThisWeek: 24 },
-  { id: "d3", name: "Chukwuemeka Obi", code: "KJA-003", phone: "080 4567 8901", status: "late", tripsToday: 0, earningsToday: 0, rating: 4.2, complianceStatus: "warning", hoursThisWeek: 38 },
-  { id: "d4", name: "Fatima Garba", code: "KJA-004", phone: "080 5678 9012", status: "active", route: "Lagos Island – Lekki", bus: "BUS-09", currentPassengers: 25, tripsToday: 2, earningsToday: 62500, rating: 4.9, shiftStart: "06:30", complianceStatus: "clear", hoursThisWeek: 22 },
-  { id: "d5", name: "Seun Adeyemi", code: "KJA-005", phone: "080 6789 0123", status: "offline", tripsToday: 4, earningsToday: 92000, rating: 4.7, complianceStatus: "clear", hoursThisWeek: 48 },
-  { id: "d6", name: "Aminu Danbaba", code: "KJA-006", phone: "080 7890 1234", status: "active", route: "Berger – Oshodi", bus: "BUS-02", currentPassengers: 14, tripsToday: 1, earningsToday: 35000, rating: 4.3, shiftStart: "08:00", complianceStatus: "clear", hoursThisWeek: 16 },
-  { id: "d7", name: "Blessing Okafor", code: "KJA-007", phone: "080 8901 2345", status: "on_leave", tripsToday: 0, earningsToday: 0, rating: 4.5, complianceStatus: "clear", hoursThisWeek: 0 },
-  { id: "d8", name: "Emeka Nwosu", code: "KJA-008", phone: "080 9012 3456", status: "blocked", tripsToday: 0, earningsToday: 0, rating: 3.8, complianceStatus: "blocked", hoursThisWeek: 12 },
+  { id: "d1", name: "Ibrahim Musa", code: "KJA-001", phone: "080 2345 6789", status: "active", route: "Lagos Island – Oshodi", bus: "BUS-07", currentPassengers: 18, tripsToday: 2, earningsToday: 45000, rating: 4.8, shiftStart: "06:00", complianceStatus: "clear", hoursThisWeek: 28, licenseNumber: "DL-LG-00123", licenseExpiry: "2027-06-15", joinedDate: "2023-01-10", verificationStatus: "verified", onTimeRate: 96, completionRate: 99, incidentCount: 0, busId: "b6", assignmentType: "primary" },
+  { id: "d2", name: "Tunde Adeleke", code: "KJA-002", phone: "080 3456 7890", status: "active", route: "Oshodi – Ikeja", bus: "BUS-12", currentPassengers: 22, tripsToday: 3, earningsToday: 54000, rating: 4.6, shiftStart: "07:00", complianceStatus: "clear", hoursThisWeek: 24, licenseNumber: "DL-LG-00456", licenseExpiry: "2026-11-20", joinedDate: "2023-03-05", verificationStatus: "verified", onTimeRate: 91, completionRate: 97, incidentCount: 0, busId: "b8", assignmentType: "primary" },
+  { id: "d3", name: "Chukwuemeka Obi", code: "KJA-003", phone: "080 4567 8901", status: "late", tripsToday: 0, earningsToday: 0, rating: 4.2, complianceStatus: "warning", hoursThisWeek: 38, licenseNumber: "DL-LG-00789", licenseExpiry: "2025-08-30", joinedDate: "2023-07-14", verificationStatus: "verified", onTimeRate: 72, completionRate: 88, incidentCount: 1, busId: "b4", assignmentType: "primary" },
+  { id: "d4", name: "Fatima Garba", code: "KJA-004", phone: "080 5678 9012", status: "active", route: "Lagos Island – Lekki", bus: "BUS-09", currentPassengers: 25, tripsToday: 2, earningsToday: 62500, rating: 4.9, shiftStart: "06:30", complianceStatus: "clear", hoursThisWeek: 22, licenseNumber: "DL-LG-00321", licenseExpiry: "2028-03-10", joinedDate: "2022-11-20", verificationStatus: "verified", onTimeRate: 98, completionRate: 100, incidentCount: 0, busId: "b7", assignmentType: "primary" },
+  { id: "d5", name: "Seun Adeyemi", code: "KJA-005", phone: "080 6789 0123", status: "offline", tripsToday: 4, earningsToday: 92000, rating: 4.7, complianceStatus: "clear", hoursThisWeek: 48, licenseNumber: "DL-LG-00654", licenseExpiry: "2027-01-28", joinedDate: "2022-08-01", verificationStatus: "verified", onTimeRate: 89, completionRate: 95, incidentCount: 1 },
+  { id: "d6", name: "Aminu Danbaba", code: "KJA-006", phone: "080 7890 1234", status: "active", route: "Berger – Oshodi", bus: "BUS-02", currentPassengers: 14, tripsToday: 1, earningsToday: 35000, rating: 4.3, shiftStart: "08:00", complianceStatus: "clear", hoursThisWeek: 16, licenseNumber: "DL-LG-00987", licenseExpiry: "2026-09-12", joinedDate: "2024-02-17", verificationStatus: "verified", onTimeRate: 93, completionRate: 96, incidentCount: 0, busId: "b2", assignmentType: "primary" },
+  { id: "d7", name: "Blessing Okafor", code: "KJA-007", phone: "080 8901 2345", status: "on_leave", tripsToday: 0, earningsToday: 0, rating: 4.5, complianceStatus: "clear", hoursThisWeek: 0, licenseNumber: "DL-LG-01011", licenseExpiry: "2027-05-05", joinedDate: "2024-05-03", verificationStatus: "verified", onTimeRate: 88, completionRate: 94, incidentCount: 0 },
+  { id: "d8", name: "Emeka Nwosu", code: "KJA-008", phone: "080 9012 3456", status: "blocked", tripsToday: 0, earningsToday: 0, rating: 3.8, complianceStatus: "blocked", hoursThisWeek: 12, licenseNumber: "DL-LG-01213", licenseExpiry: "2024-12-01", joinedDate: "2023-10-12", verificationStatus: "verified", onTimeRate: 55, completionRate: 68, incidentCount: 3 },
+  { id: "d9", name: "Adaeze Eze", code: "KJA-009", phone: "081 2345 6789", status: "pending", tripsToday: 0, earningsToday: 0, rating: 5.0, complianceStatus: "clear", hoursThisWeek: 0, verificationStatus: "unverified", joinedDate: "2026-05-25", incidentCount: 0 },
 ]
 
 export const buses: Bus[] = [
