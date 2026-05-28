@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Danger, Warning2, InfoCircle, Bus, People } from "iconsax-react"
+import { Danger, Warning2, InfoCircle } from "iconsax-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { alerts, type Alert } from "@/lib/data"

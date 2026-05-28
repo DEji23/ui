@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Warning2, TickCircle } from "iconsax-react"
+import { ArrowRight } from "iconsax-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -72,7 +72,7 @@ export function OperationsPanel() {
     <Card>
       <CardHeader className="border-b border-line-soft">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <CardTitle>Today's Operations</CardTitle>
+          <CardTitle>Today&apos;s Operations</CardTitle>
           <div className="flex gap-1">
             {tabs.map(t => (
               <button

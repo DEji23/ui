@@ -1,8 +1,7 @@
 import Link from "next/link"
-import { Location, Bus, Map1, Refresh2 } from "iconsax-react"
+import { Bus, Map1, Refresh2 } from "iconsax-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { buses } from "@/lib/data"
 
@@ -42,7 +41,7 @@ export function FleetMap() {
               backgroundSize: "48px 48px",
             }}
           />
-          {/* Bus pins scattered on "map" */}
+          {/* Bus pins scattered on map */}
           <div className="absolute top-8 left-[20%] h-6 w-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
             <Bus size={12} color="#34d399" variant="Bold" />
           </div>
@@ -104,7 +103,6 @@ export function FleetMap() {
                         ? `${bus.currentPassengers}/${bus.capacity} seats`
                         : `${bus.capacity} seats`}
                     </p>
-                    <p className="text-[10px] text-fg-dim mt-0.5">{bus.lastSeen ?? "—"}</p>
                   </div>
                 </div>
               )

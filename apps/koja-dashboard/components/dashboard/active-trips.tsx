@@ -2,7 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar } from "@/components/ui/avatar"
-import { cn, formatNGN } from "@/lib/utils"
+import { formatNGN } from "@/lib/utils"
 import { activeTrips } from "@/lib/data"
 
 function statusBadge(status: string) {
