@@ -1,7 +1,7 @@
 export type DriverStatus = "active" | "offline" | "late" | "on_leave" | "blocked" | "deactivated"
 export type BusStatus = "active" | "available" | "blocked" | "maintenance" | "decommissioned"
-export type AlertType = "breakdown" | "late_start" | "code_red" | "inspection_fail" | "cash_discrepancy" | "no_show"
-export type AlertSeverity = "critical" | "warning" | "info"
+export type AlertType = "breakdown" | "late_start" | "code_red" | "inspection_fail" | "cash_discrepancy" | "no_show" | "bus_offline" | "duty_missed" | "compliance_violation" | "low_utilisation" | "document_expiry" | "trip_anomaly" | "late_departure" | "route_change"
+export type AlertSeverity = "critical" | "high" | "warning" | "info"
 export type TripStatus = "scheduled" | "boarding" | "en_route" | "completed" | "cancelled"
 export type ReconciliationStatus = "match" | "discrepancy" | "pending"
 export type LeaveType = "annual" | "sick" | "emergency" | "personal"
@@ -86,8 +86,15 @@ export interface Alert {
   driver?: string
   bus?: string
   location?: string
+  route?: string
   timestamp: string
   acknowledged: boolean
+  resolved?: boolean
+  escalated?: boolean
+  suggestedAction?: string
+  resolvedBy?: string
+  resolvedAt?: string
+  note?: string
 }
 
 export interface Trip {
@@ -247,12 +254,18 @@ export const maintenanceRecords: MaintenanceRecord[] = [
 ]
 
 export const alerts: Alert[] = [
-  { id: "a1", type: "breakdown", severity: "critical", title: "Bus Breakdown", description: "BUS-03 engine failure on Third Mainland Bridge. Replacement dispatched.", driver: "Yemi Bakare", bus: "BUS-03", location: "Third Mainland Bridge", timestamp: "08:42 AM", acknowledged: false },
-  { id: "a2", type: "late_start", severity: "warning", title: "Late Start — KJA-003", description: "Chukwuemeka Obi has not accepted shift. 38 min past departure.", driver: "Chukwuemeka Obi", timestamp: "08:30 AM", acknowledged: false },
-  { id: "a3", type: "cash_discrepancy", severity: "warning", title: "Cash Discrepancy", description: "KJA-005 declared ₦8,500 less than expected. Reason: underdeclared passengers.", driver: "Seun Adeyemi", timestamp: "Yesterday 19:30", acknowledged: true },
-  { id: "a4", type: "inspection_fail", severity: "critical", title: "Bus Blocked — Tyre Issue", description: "BUS-05 failed pre-trip inspection. Left rear tyre unsafe.", bus: "BUS-05", timestamp: "06:20 AM", acknowledged: true },
-  { id: "a5", type: "code_red", severity: "critical", title: "Emergency — Code Red", description: "KJA-006 triggered silent emergency at Oshodi Bus Terminal.", driver: "Aminu Danbaba", location: "Oshodi Terminal", timestamp: "Yesterday 14:20", acknowledged: true },
-  { id: "a6", type: "no_show", severity: "warning", title: "No-Show", description: "KJA-007 Blessing Okafor did not check in. Leave request approved.", driver: "Blessing Okafor", timestamp: "06:00 AM", acknowledged: true },
+  { id: "a1", type: "breakdown", severity: "critical", title: "Bus Breakdown — BUS-03", description: "BUS-03 engine failure on Third Mainland Bridge. Bus is stationary, 22 passengers onboard. Replacement dispatched.", driver: "Yemi Bakare", bus: "BUS-03", location: "Third Mainland Bridge", timestamp: "08:42 AM", acknowledged: false, resolved: false, suggestedAction: "Dispatch replacement bus" },
+  { id: "a2", type: "no_show", severity: "critical", title: "Driver No-Show — KJA-003", description: "Chukwuemeka Obi failed to check in for scheduled morning shift. Departure was 06:00. Now 44 minutes late. Duty unassigned.", driver: "Chukwuemeka Obi", route: "Ojota – CMS", timestamp: "06:44 AM", acknowledged: false, resolved: false, suggestedAction: "Assign replacement driver" },
+  { id: "a3", type: "bus_offline", severity: "high", title: "GPS Signal Lost — BUS-04", description: "BUS-04 GPS signal lost for 52 minutes. Last known location: Oshodi Terminal. Driver not responding to calls.", bus: "BUS-04", location: "Oshodi Terminal", route: "Ojota – CMS", timestamp: "09:15 AM", acknowledged: false, resolved: false, suggestedAction: "Investigate bus status" },
+  { id: "a4", type: "trip_anomaly", severity: "high", title: "AFC Mismatch — KJA-003", description: "29 passengers recorded on AFC system but driver declared 24 on last completed trip. ₦2,500 unaccounted for.", driver: "Chukwuemeka Obi", bus: "BUS-04", route: "Ojota – CMS", timestamp: "Yesterday 15:30", acknowledged: false, resolved: false, suggestedAction: "Flag duty for reconciliation" },
+  { id: "a5", type: "compliance_violation", severity: "high", title: "Hours Limit Exceeded — KJA-005", description: "Seun Adeyemi has accumulated 48 hours this week, exceeding the 45-hour regulatory limit. Further assignment blocked.", driver: "Seun Adeyemi", timestamp: "Yesterday 22:00", acknowledged: true, resolved: false, suggestedAction: "Prevent further assignment this week" },
+  { id: "a6", type: "cash_discrepancy", severity: "high", title: "Cash Discrepancy — KJA-005", description: "KJA-005 declared ₦8,500 less than expected on morning shift. Discrepancy attributed to underdeclared passengers.", driver: "Seun Adeyemi", timestamp: "Yesterday 19:30", acknowledged: true, resolved: false, suggestedAction: "Flag for reconciliation investigation" },
+  { id: "a7", type: "document_expiry", severity: "warning", title: "Insurance Expiring — BUS-02", description: "BUS-02 third-party insurance expires in 42 days (10 July 2026). Renewal required before expiry to avoid service suspension.", bus: "BUS-02", timestamp: "Today 07:00", acknowledged: false, resolved: false, suggestedAction: "Schedule insurance renewal" },
+  { id: "a8", type: "document_expiry", severity: "warning", title: "Operating Licence Expiry — BUS-07", description: "BUS-07 operating licence expires in 47 days (15 July 2026). Regulatory clearance required for continued operation.", bus: "BUS-07", timestamp: "Today 07:00", acknowledged: false, resolved: false, suggestedAction: "Initiate licence renewal" },
+  { id: "a9", type: "low_utilisation", severity: "warning", title: "Low Seat Utilisation — Ojota–CMS", description: "Average seat fill on Ojota–CMS route dropped to 44% across last 3 trips. Revenue impact estimated ₦15,000 below target.", route: "Ojota – CMS", timestamp: "Yesterday 18:00", acknowledged: false, resolved: false, suggestedAction: "Review route schedule and demand" },
+  { id: "a10", type: "late_departure", severity: "warning", title: "Late Departure — BUS-09 Trip 3", description: "BUS-09 left Lekki terminal 22 minutes behind schedule on Trip 3. Downstream schedule impact for afternoon run.", bus: "BUS-09", driver: "Fatima Garba", route: "Lagos Island – Lekki", timestamp: "11:52 AM", acknowledged: true, resolved: true, resolvedBy: "Dispatch", resolvedAt: "12:10 PM", suggestedAction: "Adjust afternoon departure time" },
+  { id: "a11", type: "inspection_fail", severity: "critical", title: "Bus Blocked — Tyre Failure", description: "BUS-05 failed pre-trip inspection. Left rear tyre unsafe for road use. Bus removed from today's service.", bus: "BUS-05", timestamp: "06:20 AM", acknowledged: true, resolved: true, resolvedBy: "Fleet Manager", resolvedAt: "07:00 AM", suggestedAction: "Remove bus from service and arrange tyre replacement" },
+  { id: "a12", type: "code_red", severity: "critical", title: "Emergency — Code Red KJA-006", description: "KJA-006 triggered silent emergency at Oshodi Bus Terminal. Police notified. Driver safe, situation defused.", driver: "Aminu Danbaba", location: "Oshodi Terminal", timestamp: "Yesterday 14:20", acknowledged: true, resolved: true, resolvedBy: "Fleet Manager", resolvedAt: "Yesterday 15:05", suggestedAction: "Request police assistance" },
 ]
 
 export const activeTrips: Trip[] = [
@@ -476,4 +489,298 @@ export const driverIncidents: DriverIncident[] = [
   { id: "di4", driverId: "d2", driverCode: "KJA-002", type: "route_deviation", description: "Bus took an unofficial route at Oshodi junction without clearance. Route restored after 12 minutes.", date: "2026-05-18", severity: "warning", status: "dismissed" },
   { id: "di5", driverId: "d6", driverCode: "KJA-006", type: "no_show", description: "Failed to appear for assigned morning shift on 2026-05-15 without prior notification. Duty reassigned to backup driver.", date: "2026-05-15", severity: "warning", status: "resolved" },
   { id: "di6", driverId: "d1", driverCode: "KJA-001", type: "complaint", description: "Minor dispute with passenger over change amount. Resolved on-site. Passenger did not escalate.", date: "2026-05-10", severity: "info", status: "resolved" },
+]
+
+// ─── FINANCIALS ─────────────────────────────────────────────────────────────────────────
+
+export type FeeCollector = "platform" | "government" | "union" | "terminal"
+export type TripSettlementStatus = "provisional" | "confirmed" | "fee_calculated" | "approved" | "paid" | "disputed"
+export type ComplianceDocType = "operating_license" | "insurance" | "commercial_permit" | "tax_registration" | "inspection_certificate" | "roadworthiness"
+
+export interface TripFeeItem {
+  name: string
+  collector: FeeCollector
+  amount: number
+}
+
+export interface FieldExpense {
+  type: string
+  amount: number
+  category: "official" | "informal"
+  timestamp: string
+  location?: string
+  status: "pending" | "approved" | "rejected"
+}
+
+export interface TripRecord {
+  id: string
+  date: string
+  route: string
+  bus: string
+  driver: string
+  driverCode: string
+  shiftType: "morning" | "afternoon" | "split"
+  startTime: string
+  endTime: string
+  tripStatus: "completed" | "cancelled" | "partial"
+  passengerCount: number
+  grossRevenue: number
+  fees: TripFeeItem[]
+  fieldExpenses: FieldExpense[]
+  netRevenue: number
+  settlementStatus: TripSettlementStatus
+}
+
+export interface Settlement {
+  id: string
+  date: string
+  driver: string
+  driverCode: string
+  bus: string
+  route: string
+  grossRevenue: number
+  totalTripFees: number
+  totalDailyFees: number
+  fieldExpenses: number
+  netRevenue: number
+  ownerSharePct: number
+  driverSharePct: number
+  ownerAmount: number
+  driverAmount: number
+  status: TripSettlementStatus
+  regulatorySummary: { collector: string; amount: number }[]
+}
+
+export interface ComplianceDoc {
+  id: string
+  busId: string
+  busCode: string
+  type: ComplianceDocType
+  name: string
+  expiryDate: string
+  cost: number
+  region: string
+  issuingAuthority: string
+  status: "valid" | "expiring_soon" | "expired"
+  amortizedDailyRate: number
+}
+
+export const tripRecords: TripRecord[] = [
+  {
+    id: "tr1", date: "2026-05-29", route: "Lagos Island – Oshodi", bus: "BUS-07", driver: "Ibrahim Musa", driverCode: "KJA-001",
+    shiftType: "morning", startTime: "06:00", endTime: "09:10", tripStatus: "completed", passengerCount: 26, grossRevenue: 13000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 650 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 390 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "Terminal Entry Fee", collector: "terminal", amount: 150 },
+    ],
+    fieldExpenses: [{ type: "Bridge Toll", amount: 500, category: "official", timestamp: "06:45 AM", location: "Carter Bridge", status: "approved" }],
+    netRevenue: 11110, settlementStatus: "paid",
+  },
+  {
+    id: "tr2", date: "2026-05-29", route: "Lagos Island – Oshodi", bus: "BUS-07", driver: "Ibrahim Musa", driverCode: "KJA-001",
+    shiftType: "morning", startTime: "09:30", endTime: "12:40", tripStatus: "completed", passengerCount: 24, grossRevenue: 12000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 600 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 360 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "Terminal Entry Fee", collector: "terminal", amount: 150 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 10690, settlementStatus: "approved",
+  },
+  {
+    id: "tr3", date: "2026-05-29", route: "Oshodi – Ikeja", bus: "BUS-12", driver: "Tunde Adeleke", driverCode: "KJA-002",
+    shiftType: "morning", startTime: "07:00", endTime: "09:50", tripStatus: "completed", passengerCount: 28, grossRevenue: 14000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 700 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 420 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 12680, settlementStatus: "fee_calculated",
+  },
+  {
+    id: "tr4", date: "2026-05-29", route: "Lagos Island – Lekki", bus: "BUS-09", driver: "Fatima Garba", driverCode: "KJA-004",
+    shiftType: "morning", startTime: "06:30", endTime: "09:45", tripStatus: "completed", passengerCount: 30, grossRevenue: 18000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 900 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 540 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "Lekki Terminal Fee", collector: "terminal", amount: 200 },
+    ],
+    fieldExpenses: [{ type: "Lekki Toll Gate", amount: 1000, category: "official", timestamp: "07:15 AM", location: "Lekki Toll Plaza", status: "approved" }],
+    netRevenue: 15160, settlementStatus: "paid",
+  },
+  {
+    id: "tr5", date: "2026-05-29", route: "Berger – Oshodi", bus: "BUS-02", driver: "Aminu Danbaba", driverCode: "KJA-006",
+    shiftType: "morning", startTime: "08:00", endTime: "10:30", tripStatus: "completed", passengerCount: 22, grossRevenue: 11000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 550 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 330 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 9920, settlementStatus: "provisional",
+  },
+  {
+    id: "tr6", date: "2026-05-29", route: "Ojota – CMS", bus: "BUS-04", driver: "Chukwuemeka Obi", driverCode: "KJA-003",
+    shiftType: "morning", startTime: "06:00", endTime: "09:20", tripStatus: "completed", passengerCount: 24, grossRevenue: 12000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 600 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 360 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "CMS Terminal Fee", collector: "terminal", amount: 150 },
+    ],
+    fieldExpenses: [{ type: "Fuel Top-Up", amount: 3000, category: "informal", timestamp: "07:30 AM", location: "Ojota", status: "pending" }],
+    netRevenue: 7690, settlementStatus: "disputed",
+  },
+  {
+    id: "tr7", date: "2026-05-28", route: "Berger – Oshodi", bus: "BUS-11", driver: "Seun Adeyemi", driverCode: "KJA-005",
+    shiftType: "morning", startTime: "06:30", endTime: "09:15", tripStatus: "completed", passengerCount: 29, grossRevenue: 14500,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 725 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 435 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 13140, settlementStatus: "paid",
+  },
+  {
+    id: "tr8", date: "2026-05-28", route: "Lagos Island – Oshodi", bus: "BUS-07", driver: "Ibrahim Musa", driverCode: "KJA-001",
+    shiftType: "morning", startTime: "06:00", endTime: "09:05", tripStatus: "completed", passengerCount: 25, grossRevenue: 12500,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 625 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 375 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "Terminal Entry Fee", collector: "terminal", amount: 150 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 11150, settlementStatus: "paid",
+  },
+  {
+    id: "tr9", date: "2026-05-28", route: "Lagos Island – Lekki", bus: "BUS-09", driver: "Fatima Garba", driverCode: "KJA-004",
+    shiftType: "morning", startTime: "06:30", endTime: "09:50", tripStatus: "completed", passengerCount: 27, grossRevenue: 16200,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 810 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 486 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "Lekki Terminal Fee", collector: "terminal", amount: 200 },
+    ],
+    fieldExpenses: [{ type: "Lekki Toll Gate", amount: 1000, category: "official", timestamp: "07:20 AM", location: "Lekki Toll Plaza", status: "approved" }],
+    netRevenue: 13504, settlementStatus: "approved",
+  },
+  {
+    id: "tr10", date: "2026-05-28", route: "Oshodi – Ikeja", bus: "BUS-12", driver: "Tunde Adeleke", driverCode: "KJA-002",
+    shiftType: "morning", startTime: "07:00", endTime: "09:45", tripStatus: "completed", passengerCount: 22, grossRevenue: 11000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 550 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 330 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 9920, settlementStatus: "approved",
+  },
+  {
+    id: "tr11", date: "2026-05-27", route: "Lagos Island – Oshodi", bus: "BUS-07", driver: "Ibrahim Musa", driverCode: "KJA-001",
+    shiftType: "morning", startTime: "06:00", endTime: "09:00", tripStatus: "completed", passengerCount: 28, grossRevenue: 14000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 700 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 420 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "Terminal Entry Fee", collector: "terminal", amount: 150 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 12530, settlementStatus: "paid",
+  },
+  {
+    id: "tr12", date: "2026-05-27", route: "Lagos Island – Lekki", bus: "BUS-09", driver: "Fatima Garba", driverCode: "KJA-004",
+    shiftType: "morning", startTime: "06:30", endTime: "09:55", tripStatus: "completed", passengerCount: 30, grossRevenue: 17000,
+    fees: [
+      { name: "Platform Commission (5%)", collector: "platform", amount: 850 },
+      { name: "Municipal Transport Tax (3%)", collector: "government", amount: 510 },
+      { name: "Drivers Union Levy", collector: "union", amount: 200 },
+      { name: "Lekki Terminal Fee", collector: "terminal", amount: 200 },
+    ],
+    fieldExpenses: [],
+    netRevenue: 15240, settlementStatus: "paid",
+  },
+]
+
+export const settlements: Settlement[] = [
+  {
+    id: "s1", date: "2026-05-29", driver: "Ibrahim Musa", driverCode: "KJA-001", bus: "BUS-07", route: "Lagos Island – Oshodi",
+    grossRevenue: 39500, totalTripFees: 4290, totalDailyFees: 800, fieldExpenses: 500, netRevenue: 33910,
+    ownerSharePct: 80, driverSharePct: 20, ownerAmount: 27128, driverAmount: 6782,
+    status: "paid",
+    regulatorySummary: [
+      { collector: "Platform", amount: 1975 },
+      { collector: "Government", amount: 1185 },
+      { collector: "Union", amount: 600 },
+      { collector: "Terminal", amount: 530 },
+    ],
+  },
+  {
+    id: "s2", date: "2026-05-29", driver: "Fatima Garba", driverCode: "KJA-004", bus: "BUS-09", route: "Lagos Island – Lekki",
+    grossRevenue: 51200, totalTripFees: 5492, totalDailyFees: 1200, fieldExpenses: 2000, netRevenue: 42508,
+    ownerSharePct: 80, driverSharePct: 20, ownerAmount: 34006, driverAmount: 8502,
+    status: "approved",
+    regulatorySummary: [
+      { collector: "Platform", amount: 2560 },
+      { collector: "Government", amount: 1536 },
+      { collector: "Union", amount: 800 },
+      { collector: "Terminal", amount: 596 },
+    ],
+  },
+  {
+    id: "s3", date: "2026-05-29", driver: "Tunde Adeleke", driverCode: "KJA-002", bus: "BUS-12", route: "Oshodi – Ikeja",
+    grossRevenue: 25000, totalTripFees: 2400, totalDailyFees: 600, fieldExpenses: 0, netRevenue: 22000,
+    ownerSharePct: 80, driverSharePct: 20, ownerAmount: 17600, driverAmount: 4400,
+    status: "fee_calculated",
+    regulatorySummary: [
+      { collector: "Platform", amount: 1250 },
+      { collector: "Government", amount: 750 },
+      { collector: "Union", amount: 400 },
+    ],
+  },
+  {
+    id: "s4", date: "2026-05-29", driver: "Aminu Danbaba", driverCode: "KJA-006", bus: "BUS-02", route: "Berger – Oshodi",
+    grossRevenue: 11000, totalTripFees: 1080, totalDailyFees: 400, fieldExpenses: 0, netRevenue: 9520,
+    ownerSharePct: 80, driverSharePct: 20, ownerAmount: 7616, driverAmount: 1904,
+    status: "provisional",
+    regulatorySummary: [
+      { collector: "Platform", amount: 550 },
+      { collector: "Government", amount: 330 },
+      { collector: "Union", amount: 200 },
+    ],
+  },
+  {
+    id: "s5", date: "2026-05-29", driver: "Chukwuemeka Obi", driverCode: "KJA-003", bus: "BUS-04", route: "Ojota – CMS",
+    grossRevenue: 12000, totalTripFees: 1310, totalDailyFees: 400, fieldExpenses: 3000, netRevenue: 7290,
+    ownerSharePct: 80, driverSharePct: 20, ownerAmount: 5832, driverAmount: 1458,
+    status: "disputed",
+    regulatorySummary: [
+      { collector: "Platform", amount: 600 },
+      { collector: "Government", amount: 360 },
+      { collector: "Union", amount: 200 },
+      { collector: "Terminal", amount: 150 },
+    ],
+  },
+]
+
+export const complianceDocs: ComplianceDoc[] = [
+  { id: "cd1", busId: "b6", busCode: "BUS-07", type: "insurance", name: "Third-Party Insurance", expiryDate: "2026-09-15", cost: 180000, region: "Lagos State", issuingAuthority: "NAICOM", status: "valid", amortizedDailyRate: 493 },
+  { id: "cd2", busId: "b6", busCode: "BUS-07", type: "operating_license", name: "Transport Operator Licence", expiryDate: "2026-07-15", cost: 45000, region: "Lagos State", issuingAuthority: "LASTMA", status: "expiring_soon", amortizedDailyRate: 123 },
+  { id: "cd3", busId: "b6", busCode: "BUS-07", type: "commercial_permit", name: "Commercial Route Permit", expiryDate: "2027-01-15", cost: 25000, region: "Lagos State", issuingAuthority: "LAMATA", status: "valid", amortizedDailyRate: 68 },
+  { id: "cd4", busId: "b8", busCode: "BUS-12", type: "insurance", name: "Third-Party Insurance", expiryDate: "2026-08-20", cost: 180000, region: "Lagos State", issuingAuthority: "NAICOM", status: "valid", amortizedDailyRate: 493 },
+  { id: "cd5", busId: "b8", busCode: "BUS-12", type: "inspection_certificate", name: "Vehicle Roadworthiness", expiryDate: "2026-07-10", cost: 15000, region: "Lagos State", issuingAuthority: "VIO", status: "expiring_soon", amortizedDailyRate: 41 },
+  { id: "cd6", busId: "b7", busCode: "BUS-09", type: "insurance", name: "Third-Party Insurance", expiryDate: "2026-10-01", cost: 180000, region: "Lagos State", issuingAuthority: "NAICOM", status: "valid", amortizedDailyRate: 493 },
+  { id: "cd7", busId: "b7", busCode: "BUS-09", type: "operating_license", name: "Transport Operator Licence", expiryDate: "2027-01-20", cost: 45000, region: "Lagos State", issuingAuthority: "LASTMA", status: "valid", amortizedDailyRate: 123 },
+  { id: "cd8", busId: "b4", busCode: "BUS-04", type: "insurance", name: "Third-Party Insurance", expiryDate: "2026-12-01", cost: 180000, region: "Lagos State", issuingAuthority: "NAICOM", status: "valid", amortizedDailyRate: 493 },
+  { id: "cd9", busId: "b4", busCode: "BUS-04", type: "commercial_permit", name: "Commercial Route Permit", expiryDate: "2026-11-10", cost: 25000, region: "Lagos State", issuingAuthority: "LAMATA", status: "valid", amortizedDailyRate: 68 },
+  { id: "cd10", busId: "b3", busCode: "BUS-03", type: "insurance", name: "Third-Party Insurance", expiryDate: "2026-05-28", cost: 180000, region: "Lagos State", issuingAuthority: "NAICOM", status: "expired", amortizedDailyRate: 493 },
+  { id: "cd11", busId: "b3", busCode: "BUS-03", type: "roadworthiness", name: "Roadworthiness Certificate", expiryDate: "2026-04-30", cost: 20000, region: "Lagos State", issuingAuthority: "VIO", status: "expired", amortizedDailyRate: 55 },
+  { id: "cd12", busId: "b2", busCode: "BUS-02", type: "insurance", name: "Third-Party Insurance", expiryDate: "2026-07-10", cost: 180000, region: "Lagos State", issuingAuthority: "NAICOM", status: "expiring_soon", amortizedDailyRate: 493 },
+  { id: "cd13", busId: "b2", busCode: "BUS-02", type: "operating_license", name: "Transport Operator Licence", expiryDate: "2026-08-05", cost: 45000, region: "Lagos State", issuingAuthority: "LASTMA", status: "valid", amortizedDailyRate: 123 },
 ]
