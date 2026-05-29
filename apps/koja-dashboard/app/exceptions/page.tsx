@@ -5,7 +5,6 @@ import {
   Warning2,
   Danger,
   TickCircle,
-  Timer1,
   Bus,
   People,
   Map1,
@@ -14,11 +13,11 @@ import {
   SearchNormal1,
   ArrowRight2,
   Lock1,
-  RefreshCircle,
   InfoCircle,
   Shield,
   ReceiptItem,
   Profile2User,
+  CallCalling,
 } from "iconsax-react"
 import { cn } from "@/lib/utils"
 import {
@@ -67,11 +66,14 @@ const CATEGORY_ACTIONS: Record<ExceptionCategory, { value: string; label: string
   driver: [
     { value: "reassign_driver", label: "Assign Replacement Driver" },
     { value: "mark_no_show", label: "Mark as No-Show" },
+    { value: "delay_trip", label: "Delay Trip" },
+    { value: "cancel_trip", label: "Cancel Trip" },
     { value: "notify_supervisor", label: "Notify Supervisor" },
   ],
   bus_asset: [
     { value: "assign_replacement_bus", label: "Assign Replacement Bus" },
     { value: "dispatch_replacement", label: "Dispatch Replacement (Mid-Trip)" },
+    { value: "terminate_refund", label: "Terminate Trip + Issue Refund" },
     { value: "lock_bus", label: "Lock Bus from Service" },
     { value: "schedule_maintenance", label: "Schedule Maintenance" },
   ],
@@ -105,6 +107,7 @@ const REASON_OPTIONS: Record<string, string[]> = {
   notify_supervisor: ["Information only", "Escalation required", "Awaiting guidance"],
   assign_replacement_bus: ["Bus breakdown", "Bus failed inspection", "GPS offline", "Maintenance required", "Bus blocked by authority"],
   dispatch_replacement: ["Mid-trip engine failure", "Tyre puncture", "Transmission fault", "Passenger safety risk"],
+  terminate_refund: ["Bus breakdown mid-trip", "Vehicle unsafe to continue", "Safety incident", "Driver incapacitated", "External authority instruction"],
   lock_bus: ["Failed inspection", "Safety risk", "Authority order", "Compliance breach", "Pending investigation"],
   schedule_maintenance: ["Routine service due", "Fault detected", "Post-inspection requirement"],
   correct_route: ["GPS deviation detected", "Driver took shortcut", "Traffic diversion", "Road closure", "Route assignment error"],
@@ -121,6 +124,33 @@ const REASON_OPTIONS: Record<string, string[]> = {
   lock_bus_qr: ["Suspected QR fraud", "System security alert", "AFC anomaly", "Authority request"],
   escalate_police: ["Violent incident", "Theft", "Fraud", "Passenger threat", "Driver request"],
 }
+
+const IMPACT_SUMMARIES: Record<string, string> = {
+  reassign_driver: "Trip continues under replacement driver. Driver app receives new assignment. Passengers get updated ETA.",
+  mark_no_show: "Duty flagged as no-show. Bus remains at terminal until reassigned. Reconciliation record created.",
+  notify_supervisor: "Supervisor receives immediate alert. No operational change — escalation and awareness only.",
+  assign_replacement_bus: "Replacement bus assigned to the route. Driver app and passenger tracking updated automatically.",
+  dispatch_replacement: "Replacement bus dispatched to breakdown location. Passengers transferred — original AFC records retained. No double billing.",
+  terminate_refund: "Trip terminated. All boarded passengers notified and made eligible for wallet refund. Revenue voided for the incomplete trip.",
+  lock_bus: "Bus locked from all active service. No further trips until unlocked by an admin.",
+  schedule_maintenance: "Maintenance job logged in fleet schedule. Bus remains inactive until work is cleared.",
+  correct_route: "Driver contacted via app. Route corrected in AFC and passenger tracking. Fare logic preserved.",
+  override_capacity: "Capacity override logged with documented justification. Flagged for compliance review.",
+  delay_trip: "Departure time updated. Passengers with app notifications receive new ETA. Driver schedule updated.",
+  cancel_trip: "Trip cancelled. All boarded passengers notified immediately. Revenue for this trip voided.",
+  apply_fallback_boarding: "Manual boarding activated for this bus. Passengers can board with manual code until device is restored.",
+  investigate_fraud: "Fraud investigation raised. Compliance team notified. AFC data for this trip frozen for review.",
+  force_end_shift: "Shift ended immediately. Driver blocked from new assignments until next cycle. Compliance record updated.",
+  approve_extension: "Regulatory extension approved and logged. Driver cannot be assigned the following day without minimum rest gap. Month-end compliance review triggered.",
+  suspend_driver: "Driver suspended from all active assignments. HR team notified. Active trips unaffected.",
+  lock_bus_qr: "Bus QR/AFC system locked. Passengers cannot board via app until admin unlocks after investigation.",
+  escalate_police: "Police notification sent. Incident reference logged in audit trail. Fleet manager receives confirmation.",
+}
+
+const NOTIFY_PASSENGERS_ACTIONS = new Set([
+  "reassign_driver", "assign_replacement_bus", "dispatch_replacement",
+  "delay_trip", "cancel_trip", "correct_route", "terminate_refund",
+])
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -165,6 +195,7 @@ function CategoryIcon({ cat, size = 13 }: { cat: ExceptionCategory; size?: numbe
 export default function ExceptionsPage() {
   const [exList, setExList] = useState<Exception[]>(initialExceptions)
   const [catFilter, setCatFilter] = useState<ExceptionCategory | "all">("all")
+  const [sevFilter, setSevFilter] = useState<"all" | "critical" | "high" | "warning" | "info">("all")
   const [selectedEx, setSelectedEx] = useState<Exception | null>(null)
   const [actionType, setActionType] = useState("")
   const [reason, setReason] = useState("")
@@ -174,6 +205,7 @@ export default function ExceptionsPage() {
   const [handoverLocation, setHandoverLocation] = useState("")
   const [newDepartureTime, setNewDepartureTime] = useState("")
   const [overrideHours, setOverrideHours] = useState("")
+  const [notifyPassengers, setNotifyPassengers] = useState(true)
   const [confirmStep, setConfirmStep] = useState(false)
 
   // Refund panel
@@ -183,6 +215,7 @@ export default function ExceptionsPage() {
   const [refundTripId, setRefundTripId] = useState("")
   const [refundAmount, setRefundAmount] = useState("")
   const [refundReason, setRefundReason] = useState("")
+  const [confirmRefund, setConfirmRefund] = useState(false)
 
   // Incident form
   const [showIncidentForm, setShowIncidentForm] = useState(false)
@@ -211,6 +244,7 @@ export default function ExceptionsPage() {
     setHandoverLocation("")
     setNewDepartureTime("")
     setOverrideHours("")
+    setNotifyPassengers(true)
     setConfirmStep(false)
   }
 
@@ -239,23 +273,30 @@ export default function ExceptionsPage() {
     )
   }
 
+  function handleCallDriver() {
+    if (!selectedEx?.driver) return
+    addToast(`Calling ${selectedEx.driver}…`, "blue")
+    appendAudit(selectedEx.id, `Outbound call initiated to driver ${selectedEx.driver}`)
+  }
+
   function handleConfirmAction() {
     if (!selectedEx) return
     const ex = selectedEx
     const driverObj = drivers.find(d => d.id === replacementDriver)
     const busObj = buses.find(b => b.id === replacementBus)
+    const notifyStr = NOTIFY_PASSENGERS_ACTIONS.has(actionType) ? (notifyPassengers ? " Passengers notified." : " Passenger notification skipped.") : ""
 
     const audit: Record<string, string> = {
-      reassign_driver: `Replacement driver assigned: ${driverObj?.name ?? replacementDriver}. Reason: ${reason}${handoverLocation ? `. Handover at: ${handoverLocation}` : ""}`,
+      reassign_driver: `Replacement driver assigned: ${driverObj?.name ?? replacementDriver}. Reason: ${reason}${handoverLocation ? `. Handover at: ${handoverLocation}` : ""}${notifyStr}`,
       mark_no_show: `Driver marked as no-show. Reason: ${reason}`,
       notify_supervisor: `Supervisor notified. ${notes || reason}`,
-      assign_replacement_bus: `Replacement bus assigned: ${busObj?.code ?? replacementBus}. Reason: ${reason}`,
-      dispatch_replacement: `Replacement dispatched — Driver: ${driverObj?.name ?? "TBD"}, Bus: ${busObj?.code ?? "TBD"}. Passengers transferred (no double billing). Reason: ${reason}`,
+      assign_replacement_bus: `Replacement bus assigned: ${busObj?.code ?? replacementBus}. Reason: ${reason}${notifyStr}`,
+      dispatch_replacement: `Replacement dispatched — Driver: ${driverObj?.name ?? "TBD"}, Bus: ${busObj?.code ?? "TBD"}. Passengers transferred (no double billing). Reason: ${reason}${notifyStr}`,
       lock_bus: `Bus ${ex.bus ?? ""} locked from service. Reason: ${reason}`,
       schedule_maintenance: `Maintenance scheduled. Notes: ${notes || reason}`,
-      correct_route: `Route correction initiated — driver contacted. Reason: ${reason}`,
+      correct_route: `Route correction initiated — driver contacted. Reason: ${reason}${notifyStr}`,
       override_capacity: `Overcapacity override approved. Justification: ${reason}`,
-      delay_trip: `Trip delayed. New departure: ${newDepartureTime || "TBD"}. Reason: ${reason}`,
+      delay_trip: `Trip delayed. New departure: ${newDepartureTime || "TBD"}. Reason: ${reason}${notifyStr}`,
       cancel_trip: `Trip cancelled. Reason: ${reason}. Passengers notified.`,
       apply_fallback_boarding: `Fallback boarding applied — manual log activated. Reason: ${reason}`,
       investigate_fraud: `Flagged for fraud investigation. Notes: ${notes || reason}`,
@@ -326,6 +367,7 @@ export default function ExceptionsPage() {
     setRefundAmount("")
     setRefundReason("")
     setRefundTripId("")
+    setConfirmRefund(false)
     addToast(`₦${Number(refundAmount).toLocaleString()} refund processed for ${refundPassenger.name}`)
   }
 
@@ -351,7 +393,9 @@ export default function ExceptionsPage() {
   }
 
   // Computed values
-  const filtered = catFilter === "all" ? exList : exList.filter(e => e.category === catFilter)
+  const filtered = exList
+    .filter(e => catFilter === "all" || e.category === catFilter)
+    .filter(e => sevFilter === "all" || e.severity === sevFilter)
   const sortedFiltered = [...filtered].sort((a, b) => {
     const sevOrder = { critical: 0, high: 1, warning: 2, info: 3 }
     const stOrder = { open: 0, in_progress: 1, resolved: 2 }
@@ -380,7 +424,15 @@ export default function ExceptionsPage() {
         )
       : []
 
-  const actionIsLauncher = actionType === "issue_refund" || actionType === "file_incident_report"
+  const actionIsLauncher = actionType === "issue_refund" || actionType === "file_incident_report" || actionType === "terminate_refund"
+
+  const SEV_FILTERS = [
+    { value: "all", label: "All severities" },
+    { value: "critical", label: "Critical", color: "text-red-400 bg-red-500/10" },
+    { value: "high", label: "High", color: "text-orange-400 bg-orange-500/10" },
+    { value: "warning", label: "Warning", color: "text-amber-400 bg-amber-500/10" },
+    { value: "info", label: "Info", color: "text-blue-400 bg-blue-500/10" },
+  ] as const
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 max-w-5xl">
@@ -415,45 +467,68 @@ export default function ExceptionsPage() {
       </div>
 
       {/* Category filter tabs */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {(["all", "driver", "bus_asset", "trip_route", "passenger_payment", "compliance", "security_incident"] as const).map(cat => {
-          const count =
-            cat === "all"
-              ? exList.filter(e => e.status !== "resolved").length
-              : exList.filter(e => e.category === cat && e.status !== "resolved").length
-          return (
+      <div className="space-y-2">
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {(["all", "driver", "bus_asset", "trip_route", "passenger_payment", "compliance", "security_incident"] as const).map(cat => {
+            const count =
+              cat === "all"
+                ? exList.filter(e => e.status !== "resolved").length
+                : exList.filter(e => e.category === cat && e.status !== "resolved").length
+            return (
+              <button
+                key={cat}
+                onClick={() => setCatFilter(cat)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors shrink-0",
+                  catFilter === cat
+                    ? "bg-amber-500/15 text-amber-400"
+                    : "bg-surface text-fg-muted hover:bg-[var(--hover-bg)] hover:text-fg"
+                )}
+              >
+                {cat !== "all" && <CategoryIcon cat={cat as ExceptionCategory} size={12} />}
+                {cat === "all" ? "All" : CATEGORY_LABELS[cat as ExceptionCategory]}
+                {count > 0 && (
+                  <span
+                    className={cn(
+                      "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
+                      catFilter === cat ? "bg-amber-500 text-black" : "bg-red-500/20 text-red-400"
+                    )}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Severity filter */}
+        <div className="flex gap-1.5 flex-wrap">
+          {SEV_FILTERS.map(sf => (
             <button
-              key={cat}
-              onClick={() => setCatFilter(cat)}
+              key={sf.value}
+              onClick={() => setSevFilter(sf.value)}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors shrink-0",
-                catFilter === cat
-                  ? "bg-amber-500/15 text-amber-400"
-                  : "bg-surface text-fg-muted hover:bg-[var(--hover-bg)] hover:text-fg"
+                "flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                sevFilter === sf.value
+                  ? sf.value === "all"
+                    ? "bg-[var(--subtle-bg)] text-fg"
+                    : sf.color + " border border-current/20"
+                  : "text-fg-dim hover:text-fg-muted hover:bg-[var(--hover-bg)]"
               )}
             >
-              {cat !== "all" && <CategoryIcon cat={cat as ExceptionCategory} size={12} />}
-              {cat === "all" ? "All" : CATEGORY_LABELS[cat as ExceptionCategory]}
-              {count > 0 && (
-                <span
-                  className={cn(
-                    "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
-                    catFilter === cat ? "bg-amber-500 text-black" : "bg-red-500/20 text-red-400"
-                  )}
-                >
-                  {count}
-                </span>
-              )}
+              {sf.value !== "all" && <SeverityIcon severity={sf.value} size={10} />}
+              {sf.label}
             </button>
-          )
-        })}
+          ))}
+        </div>
       </div>
 
       {/* Exception list */}
       <div className="space-y-2">
         {sortedFiltered.length === 0 && (
           <div className="flex items-center justify-center py-12 text-fg-dim text-sm">
-            No exceptions in this category
+            No exceptions match the current filters
           </div>
         )}
         {sortedFiltered.map(ex => (
@@ -584,6 +659,21 @@ export default function ExceptionsPage() {
                 )}
               </div>
 
+              {/* Quick actions */}
+              {selectedEx.status !== "resolved" && selectedEx.driver && (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-line-soft text-fg-muted text-xs gap-1.5"
+                    onClick={handleCallDriver}
+                  >
+                    <CallCalling size={13} color="currentColor" variant="Linear" />
+                    Call {selectedEx.driver.split(" ")[0]}
+                  </Button>
+                </div>
+              )}
+
               {selectedEx.status === "resolved" ? (
                 <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -614,6 +704,7 @@ export default function ExceptionsPage() {
                       onValueChange={v => {
                         setActionType(v)
                         setConfirmStep(false)
+                        setNotifyPassengers(true)
                       }}
                     >
                       <SelectTrigger className="bg-surface border-line-soft text-fg text-sm">
@@ -755,6 +846,25 @@ export default function ExceptionsPage() {
                           </Button>
                         )}
 
+                        {/* Terminate + refund launcher */}
+                        {actionType === "terminate_refund" && (
+                          <>
+                            <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-400">
+                              <Danger size={11} color="currentColor" className="inline mr-1" variant="Bold" />
+                              Trip will be terminated. All passengers notified and made eligible for wallet refund.
+                              Revenue for the incomplete trip will be voided. This action cannot be undone.
+                            </div>
+                            <Button
+                              variant="outline"
+                              className="w-full border-line-soft text-fg"
+                              onClick={() => setShowRefundPanel(true)}
+                            >
+                              <ReceiptItem size={14} color="currentColor" className="mr-2" />
+                              Continue — Open Passenger Refund Panel
+                            </Button>
+                          </>
+                        )}
+
                         {/* Incident form launcher */}
                         {actionType === "file_incident_report" && (
                           <Button
@@ -818,6 +928,23 @@ export default function ExceptionsPage() {
                               />
                             </div>
 
+                            {/* Notify passengers toggle */}
+                            {NOTIFY_PASSENGERS_ACTIONS.has(actionType) && (
+                              <button
+                                onClick={() => setNotifyPassengers(!notifyPassengers)}
+                                className={cn(
+                                  "w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors border",
+                                  notifyPassengers
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                    : "bg-surface border-line-soft text-fg-muted hover:bg-[var(--hover-bg)]"
+                                )}
+                              >
+                                <People size={14} color="currentColor" variant="Linear" />
+                                <span className="flex-1 text-left text-xs">Notify passengers of this change</span>
+                                {notifyPassengers && <TickCircle size={13} color="currentColor" variant="Bold" />}
+                              </button>
+                            )}
+
                             {!confirmStep ? (
                               <Button
                                 className="w-full"
@@ -877,6 +1004,20 @@ export default function ExceptionsPage() {
                                       Extension:{" "}
                                       <span className="text-fg font-medium">{overrideHours}h</span>
                                     </p>
+                                  )}
+                                  {NOTIFY_PASSENGERS_ACTIONS.has(actionType) && (
+                                    <p>
+                                      Passengers notified:{" "}
+                                      <span className={cn("font-medium", notifyPassengers ? "text-emerald-400" : "text-fg-dim")}>
+                                        {notifyPassengers ? "Yes" : "No"}
+                                      </span>
+                                    </p>
+                                  )}
+                                  {IMPACT_SUMMARIES[actionType] && (
+                                    <div className="mt-2 pt-2 border-t border-amber-500/20">
+                                      <p className="text-[10px] uppercase tracking-widest text-amber-400/70 mb-1">Impact</p>
+                                      <p className="text-fg-muted leading-relaxed">{IMPACT_SUMMARIES[actionType]}</p>
+                                    </div>
                                   )}
                                   <p className="text-fg-dim pt-1">
                                     This action will be permanently recorded in the exception audit log.
@@ -954,6 +1095,7 @@ export default function ExceptionsPage() {
             setShowRefundPanel(false)
             setRefundSearch("")
             setRefundPassenger(null)
+            setConfirmRefund(false)
           }
         }}
       >
@@ -992,6 +1134,7 @@ export default function ExceptionsPage() {
                         onClick={() => {
                           setRefundPassenger(p)
                           setRefundAmount("600")
+                          setConfirmRefund(false)
                         }}
                         className="w-full flex items-center justify-between rounded-lg bg-surface border border-line-soft px-3 py-2.5 text-left hover:bg-[var(--hover-bg)] transition-colors"
                       >
@@ -1010,7 +1153,7 @@ export default function ExceptionsPage() {
                   <p className="text-xs text-fg-dim text-center py-4">No passengers found</p>
                 )}
               </>
-            ) : (
+            ) : !confirmRefund ? (
               <>
                 {/* Passenger info + trip log */}
                 <div className="rounded-xl bg-[var(--subtle-bg)] p-3">
@@ -1066,7 +1209,7 @@ export default function ExceptionsPage() {
                         <SelectValue placeholder="Select…" />
                       </SelectTrigger>
                       <SelectContent className="bg-panel border-line-soft">
-                        {["Double charge", "Overcharged fare", "AFC error", "Wrong route billed", "Driver error"].map(r => (
+                        {["Double charge", "Overcharged fare", "AFC error", "Wrong route billed", "Driver error", "Trip terminated"].map(r => (
                           <SelectItem key={r} value={r} className="text-fg text-sm">
                             {r}
                           </SelectItem>
@@ -1088,12 +1231,60 @@ export default function ExceptionsPage() {
                   <Button
                     className="flex-1"
                     disabled={!refundAmount || !refundReason || !refundTripId}
-                    onClick={handleRefundSubmit}
+                    onClick={() => setConfirmRefund(true)}
                   >
-                    Process ₦{refundAmount ? Number(refundAmount).toLocaleString() : "0"} Refund
+                    Review Refund
                   </Button>
                 </div>
               </>
+            ) : (
+              /* Refund confirm step */
+              <div className="space-y-4">
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2.5">
+                  <p className="text-xs font-semibold text-amber-400">Confirm refund</p>
+                  <div className="text-xs space-y-1.5 text-fg-muted">
+                    <p>
+                      Passenger: <span className="text-fg font-medium">{refundPassenger?.name}</span>
+                    </p>
+                    <p>
+                      Phone: <span className="text-fg font-medium">{refundPassenger?.phone}</span>
+                    </p>
+                    <p>
+                      Affected trip: <span className="text-fg font-medium">{refundTripId}</span>
+                    </p>
+                    <p>
+                      Refund amount:{" "}
+                      <span className="text-emerald-400 font-bold">
+                        ₦{Number(refundAmount).toLocaleString()}
+                      </span>
+                    </p>
+                    <p>
+                      Reason: <span className="text-fg font-medium">{refundReason}</span>
+                    </p>
+                    <div className="pt-2 border-t border-amber-500/20 mt-2">
+                      <p className="text-[10px] uppercase tracking-widest text-amber-400/70 mb-1">Impact</p>
+                      <p className="leading-relaxed">
+                        ₦{Number(refundAmount).toLocaleString()} will be credited to {refundPassenger?.name}&apos;s wallet immediately.
+                        New balance: ₦{((refundPassenger?.walletBalance ?? 0) + Number(refundAmount)).toLocaleString()}.
+                        Passenger will be notified via app. Audit trail updated.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmRefund(false)}
+                    className="border border-line-soft text-fg-muted"
+                  >
+                    Back
+                  </Button>
+                  <Button className="flex-1" onClick={handleRefundSubmit}>
+                    Confirm — Process Refund
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </DialogContent>
@@ -1234,6 +1425,17 @@ export default function ExceptionsPage() {
                 </button>
               ))}
             </div>
+
+            {/* Impact summary for incident */}
+            {(incidentType || suspendDriver || lockBusQr || escalatePolice) && (
+              <div className="rounded-lg bg-[var(--subtle-bg)] border border-line-soft px-3 py-2.5 text-xs space-y-1 text-fg-dim">
+                <p className="text-[10px] uppercase tracking-widest text-fg-dim mb-1">Impact</p>
+                <p>Trip will be flagged — future dispatch prevented until resolved.</p>
+                {suspendDriver && <p className="text-red-400">Driver suspended from all active assignments.</p>}
+                {lockBusQr && <p className="text-red-400">Bus QR/AFC locked — passengers cannot board via app.</p>}
+                {escalatePolice && <p className="text-amber-400">Police reference number will be logged in audit trail.</p>}
+              </div>
+            )}
 
             <Button
               className="w-full"
