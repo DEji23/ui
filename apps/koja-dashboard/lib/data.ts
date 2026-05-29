@@ -46,24 +46,20 @@ export interface Bus {
   lastInspection: string
   inspectionResult: "pass" | "fail" | "pending"
   fuelLevel?: number
-  // Identity
   vin?: string
   busType?: BusType
   manufacturer?: string
   year?: number
   colour?: string
   busUniqueCode?: string
-  // Compliance
   insuranceExpiry?: string
   roadworthinessExpiry?: string
   vehicleLicenseExpiry?: string
-  // Device & QR
   gpsDeviceId?: string
   gpsPaired?: boolean
   gpsLastPing?: string
   driverAppPaired?: boolean
   qrActive?: boolean
-  // Operations
   nextMaintenanceDue?: string
   lastSeen?: string
 }
@@ -242,48 +238,12 @@ export const buses: Bus[] = [
 ]
 
 export const maintenanceRecords: MaintenanceRecord[] = [
-  {
-    id: "m1", busId: "b3", busCode: "BUS-03",
-    type: "engine", date: "2026-05-22", nextDue: "2026-11-22",
-    cost: 185000, vendor: "Seun Auto Works",
-    notes: "Engine oil, air filter, cooling system flush",
-    status: "completed",
-  },
-  {
-    id: "m2", busId: "b1", busCode: "BUS-01",
-    type: "routine", date: "2026-04-10", nextDue: "2026-06-15",
-    cost: 45000, vendor: "Toyota Service Centre",
-    notes: "30,000 km routine service",
-    status: "completed",
-  },
-  {
-    id: "m3", busId: "b2", busCode: "BUS-02",
-    type: "tyre", date: "2026-03-18", nextDue: "2026-07-01",
-    cost: 72000, vendor: "Tyre King Ikeja",
-    notes: "All four tyres replaced — front pair showing wear",
-    status: "completed",
-  },
-  {
-    id: "m4", busId: "b6", busCode: "BUS-07",
-    type: "brake", date: "2026-02-28", nextDue: "2026-08-10",
-    cost: 38000, vendor: "Ade Brake Works",
-    notes: "Brake pads and discs replaced front and rear",
-    status: "completed",
-  },
-  {
-    id: "m5", busId: "b5", busCode: "BUS-05",
-    type: "electrical", date: "2026-05-10", nextDue: "2026-06-01",
-    cost: 28000, vendor: "Spark Auto Electrics",
-    notes: "Alternator replaced, battery terminals cleaned",
-    status: "overdue",
-  },
-  {
-    id: "m6", busId: "b8", busCode: "BUS-12",
-    type: "routine", date: "2026-01-15", nextDue: "2026-06-25",
-    cost: 55000, vendor: "Toyota Service Centre",
-    notes: "Scheduled 60,000 km service",
-    status: "scheduled",
-  },
+  { id: "m1", busId: "b3", busCode: "BUS-03", type: "engine", date: "2026-05-22", nextDue: "2026-11-22", cost: 185000, vendor: "Seun Auto Works", notes: "Engine oil, air filter, cooling system flush", status: "completed" },
+  { id: "m2", busId: "b1", busCode: "BUS-01", type: "routine", date: "2026-04-10", nextDue: "2026-06-15", cost: 45000, vendor: "Toyota Service Centre", notes: "30,000 km routine service", status: "completed" },
+  { id: "m3", busId: "b2", busCode: "BUS-02", type: "tyre", date: "2026-03-18", nextDue: "2026-07-01", cost: 72000, vendor: "Tyre King Ikeja", notes: "All four tyres replaced — front pair showing wear", status: "completed" },
+  { id: "m4", busId: "b6", busCode: "BUS-07", type: "brake", date: "2026-02-28", nextDue: "2026-08-10", cost: 38000, vendor: "Ade Brake Works", notes: "Brake pads and discs replaced front and rear", status: "completed" },
+  { id: "m5", busId: "b5", busCode: "BUS-05", type: "electrical", date: "2026-05-10", nextDue: "2026-06-01", cost: 28000, vendor: "Spark Auto Electrics", notes: "Alternator replaced, battery terminals cleaned", status: "overdue" },
+  { id: "m6", busId: "b8", busCode: "BUS-12", type: "routine", date: "2026-01-15", nextDue: "2026-06-25", cost: 55000, vendor: "Toyota Service Centre", notes: "Scheduled 60,000 km service", status: "scheduled" },
 ]
 
 export const alerts: Alert[] = [
@@ -353,6 +313,142 @@ export const nextDepartures: NextDeparture[] = [
 export const tripsCompletedToday = 4
 export const pendingSettlementsAmount = 210000
 
+export type ShiftType = "morning" | "afternoon" | "split"
+export type RosterStatus = "draft" | "published" | "archived"
+export type ShiftStatus = "assigned" | "conflict" | "leave" | "blocked" | "unassigned"
+
+export interface Shift {
+  id: string
+  driverId: string
+  driverName: string
+  driverCode: string
+  date: string
+  dayOfWeek: number
+  shiftType: ShiftType
+  route: string
+  busCode?: string
+  startTime: string
+  endTime: string
+  status: ShiftStatus
+  complianceFlag?: "rest_violation" | "hours_exceeded" | "license_expiring"
+}
+
+export interface Roster {
+  id: string
+  name: string
+  weekStart: string
+  weekEnd: string
+  status: RosterStatus
+  totalDrivers: number
+  assignedShifts: number
+  unassignedShifts: number
+  conflicts: number
+  publishedAt?: string
+  createdAt: string
+}
+
+export interface VehicleBlock {
+  id: string
+  busCode: string
+  route: string
+  date: string
+  trips: number
+  departure: string
+  driverId?: string
+  driverName?: string
+  status: "unassigned" | "assigned" | "dispatched" | "completed" | "cancelled"
+}
+
+export const rosters: Roster[] = [
+  {
+    id: "rs1",
+    name: "Week 22 — May 26 – Jun 1",
+    weekStart: "2026-05-26",
+    weekEnd: "2026-06-01",
+    status: "published",
+    totalDrivers: 6,
+    assignedShifts: 34,
+    unassignedShifts: 2,
+    conflicts: 1,
+    publishedAt: "2026-05-23 09:00",
+    createdAt: "2026-05-22 14:30",
+  },
+  {
+    id: "rs2",
+    name: "Week 23 — Jun 2 – 8",
+    weekStart: "2026-06-02",
+    weekEnd: "2026-06-08",
+    status: "draft",
+    totalDrivers: 6,
+    assignedShifts: 6,
+    unassignedShifts: 30,
+    conflicts: 0,
+    createdAt: "2026-05-27 10:00",
+  },
+]
+
+export const weekShifts: Shift[] = [
+  { id: "sh1", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-05-26", dayOfWeek: 0, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh2", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-05-27", dayOfWeek: 1, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh3", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-05-28", dayOfWeek: 2, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh4", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-05-29", dayOfWeek: 3, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh5", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-05-30", dayOfWeek: 4, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh6", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-05-31", dayOfWeek: 5, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh7", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-05-26", dayOfWeek: 0, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+  { id: "sh8", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-05-27", dayOfWeek: 1, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+  { id: "sh9", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-05-28", dayOfWeek: 2, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+  { id: "sh10", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-05-29", dayOfWeek: 3, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+  { id: "sh11", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-05-30", dayOfWeek: 4, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+  { id: "sh12", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-05-31", dayOfWeek: 5, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+  { id: "sh13", driverId: "d3", driverName: "Chukwuemeka Obi", driverCode: "KJA-003", date: "2026-05-26", dayOfWeek: 0, shiftType: "morning", route: "Ojota – CMS", busCode: "BUS-04", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh14", driverId: "d3", driverName: "Chukwuemeka Obi", driverCode: "KJA-003", date: "2026-05-27", dayOfWeek: 1, shiftType: "morning", route: "Ojota – CMS", busCode: "BUS-04", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh15", driverId: "d3", driverName: "Chukwuemeka Obi", driverCode: "KJA-003", date: "2026-05-28", dayOfWeek: 2, shiftType: "morning", route: "Ojota – CMS", busCode: "BUS-04", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh16", driverId: "d3", driverName: "Chukwuemeka Obi", driverCode: "KJA-003", date: "2026-05-29", dayOfWeek: 3, shiftType: "morning", route: "Ojota – CMS", busCode: "BUS-04", startTime: "06:00", endTime: "14:00", status: "conflict", complianceFlag: "rest_violation" },
+  { id: "sh17", driverId: "d3", driverName: "Chukwuemeka Obi", driverCode: "KJA-003", date: "2026-05-30", dayOfWeek: 4, shiftType: "morning", route: "Ojota – CMS", startTime: "06:00", endTime: "14:00", status: "unassigned" },
+  { id: "sh18", driverId: "d4", driverName: "Fatima Garba", driverCode: "KJA-004", date: "2026-05-26", dayOfWeek: 0, shiftType: "morning", route: "Lagos Island – Lekki", busCode: "BUS-09", startTime: "06:30", endTime: "14:30", status: "assigned" },
+  { id: "sh19", driverId: "d4", driverName: "Fatima Garba", driverCode: "KJA-004", date: "2026-05-27", dayOfWeek: 1, shiftType: "morning", route: "Lagos Island – Lekki", busCode: "BUS-09", startTime: "06:30", endTime: "14:30", status: "assigned" },
+  { id: "sh20", driverId: "d4", driverName: "Fatima Garba", driverCode: "KJA-004", date: "2026-05-28", dayOfWeek: 2, shiftType: "morning", route: "Lagos Island – Lekki", busCode: "BUS-09", startTime: "06:30", endTime: "14:30", status: "assigned" },
+  { id: "sh21", driverId: "d4", driverName: "Fatima Garba", driverCode: "KJA-004", date: "2026-05-29", dayOfWeek: 3, shiftType: "morning", route: "Lagos Island – Lekki", busCode: "BUS-09", startTime: "06:30", endTime: "14:30", status: "assigned" },
+  { id: "sh22", driverId: "d4", driverName: "Fatima Garba", driverCode: "KJA-004", date: "2026-05-30", dayOfWeek: 4, shiftType: "morning", route: "Lagos Island – Lekki", busCode: "BUS-09", startTime: "06:30", endTime: "14:30", status: "assigned" },
+  { id: "sh23", driverId: "d4", driverName: "Fatima Garba", driverCode: "KJA-004", date: "2026-05-31", dayOfWeek: 5, shiftType: "morning", route: "Lagos Island – Lekki", busCode: "BUS-09", startTime: "06:30", endTime: "14:30", status: "assigned" },
+  { id: "sh24", driverId: "d5", driverName: "Seun Adeyemi", driverCode: "KJA-005", date: "2026-05-26", dayOfWeek: 0, shiftType: "afternoon", route: "Berger – Oshodi", startTime: "14:00", endTime: "22:00", status: "assigned" },
+  { id: "sh25", driverId: "d5", driverName: "Seun Adeyemi", driverCode: "KJA-005", date: "2026-05-27", dayOfWeek: 1, shiftType: "afternoon", route: "Berger – Oshodi", startTime: "14:00", endTime: "22:00", status: "assigned" },
+  { id: "sh26", driverId: "d5", driverName: "Seun Adeyemi", driverCode: "KJA-005", date: "2026-05-28", dayOfWeek: 2, shiftType: "afternoon", route: "Berger – Oshodi", startTime: "14:00", endTime: "22:00", status: "assigned" },
+  { id: "sh27", driverId: "d5", driverName: "Seun Adeyemi", driverCode: "KJA-005", date: "2026-05-29", dayOfWeek: 3, shiftType: "afternoon", route: "Berger – Oshodi", startTime: "14:00", endTime: "22:00", status: "assigned" },
+  { id: "sh28", driverId: "d5", driverName: "Seun Adeyemi", driverCode: "KJA-005", date: "2026-05-30", dayOfWeek: 4, shiftType: "afternoon", route: "Berger – Oshodi", startTime: "14:00", endTime: "22:00", status: "assigned", complianceFlag: "hours_exceeded" },
+  { id: "sh29", driverId: "d6", driverName: "Aminu Danbaba", driverCode: "KJA-006", date: "2026-05-26", dayOfWeek: 0, shiftType: "morning", route: "Berger – Oshodi", busCode: "BUS-02", startTime: "08:00", endTime: "16:00", status: "assigned" },
+  { id: "sh30", driverId: "d6", driverName: "Aminu Danbaba", driverCode: "KJA-006", date: "2026-05-27", dayOfWeek: 1, shiftType: "morning", route: "Berger – Oshodi", busCode: "BUS-02", startTime: "08:00", endTime: "16:00", status: "assigned" },
+  { id: "sh31", driverId: "d6", driverName: "Aminu Danbaba", driverCode: "KJA-006", date: "2026-05-28", dayOfWeek: 2, shiftType: "morning", route: "Berger – Oshodi", busCode: "BUS-02", startTime: "08:00", endTime: "16:00", status: "assigned" },
+  { id: "sh32", driverId: "d6", driverName: "Aminu Danbaba", driverCode: "KJA-006", date: "2026-05-29", dayOfWeek: 3, shiftType: "morning", route: "Berger – Oshodi", busCode: "BUS-02", startTime: "08:00", endTime: "16:00", status: "assigned" },
+  { id: "sh33", driverId: "d6", driverName: "Aminu Danbaba", driverCode: "KJA-006", date: "2026-05-30", dayOfWeek: 4, shiftType: "morning", route: "Berger – Oshodi", busCode: "BUS-02", startTime: "08:00", endTime: "16:00", status: "assigned" },
+  { id: "sh34", driverId: "d6", driverName: "Aminu Danbaba", driverCode: "KJA-006", date: "2026-05-31", dayOfWeek: 5, shiftType: "morning", route: "Berger – Oshodi", busCode: "BUS-02", startTime: "08:00", endTime: "16:00", status: "assigned" },
+  { id: "sh35", driverId: "d7", driverName: "Blessing Okafor", driverCode: "KJA-007", date: "2026-05-26", dayOfWeek: 0, shiftType: "morning", route: "", startTime: "", endTime: "", status: "leave" },
+  { id: "sh36", driverId: "d7", driverName: "Blessing Okafor", driverCode: "KJA-007", date: "2026-05-27", dayOfWeek: 1, shiftType: "morning", route: "", startTime: "", endTime: "", status: "leave" },
+  { id: "sh37", driverId: "d7", driverName: "Blessing Okafor", driverCode: "KJA-007", date: "2026-05-28", dayOfWeek: 2, shiftType: "morning", route: "", startTime: "", endTime: "", status: "leave" },
+  { id: "sh38", driverId: "d7", driverName: "Blessing Okafor", driverCode: "KJA-007", date: "2026-05-29", dayOfWeek: 3, shiftType: "morning", route: "", startTime: "", endTime: "", status: "leave" },
+  { id: "sh39", driverId: "d7", driverName: "Blessing Okafor", driverCode: "KJA-007", date: "2026-05-30", dayOfWeek: 4, shiftType: "morning", route: "", startTime: "", endTime: "", status: "leave" },
+  { id: "sh40", driverId: "d8", driverName: "Emeka Nwosu", driverCode: "KJA-008", date: "2026-05-26", dayOfWeek: 0, shiftType: "morning", route: "", startTime: "", endTime: "", status: "blocked" },
+  { id: "sh41", driverId: "d8", driverName: "Emeka Nwosu", driverCode: "KJA-008", date: "2026-05-27", dayOfWeek: 1, shiftType: "morning", route: "", startTime: "", endTime: "", status: "blocked" },
+  { id: "sh42", driverId: "d8", driverName: "Emeka Nwosu", driverCode: "KJA-008", date: "2026-05-28", dayOfWeek: 2, shiftType: "morning", route: "", startTime: "", endTime: "", status: "blocked" },
+  { id: "sh43", driverId: "d8", driverName: "Emeka Nwosu", driverCode: "KJA-008", date: "2026-05-29", dayOfWeek: 3, shiftType: "morning", route: "", startTime: "", endTime: "", status: "blocked" },
+  { id: "sh44", driverId: "d8", driverName: "Emeka Nwosu", driverCode: "KJA-008", date: "2026-05-30", dayOfWeek: 4, shiftType: "morning", route: "", startTime: "", endTime: "", status: "blocked" },
+  { id: "sh45", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-06-02", dayOfWeek: 0, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh46", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-06-02", dayOfWeek: 0, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+  { id: "sh47", driverId: "d4", driverName: "Fatima Garba", driverCode: "KJA-004", date: "2026-06-02", dayOfWeek: 0, shiftType: "morning", route: "Lagos Island – Lekki", busCode: "BUS-09", startTime: "06:30", endTime: "14:30", status: "assigned" },
+  { id: "sh48", driverId: "d6", driverName: "Aminu Danbaba", driverCode: "KJA-006", date: "2026-06-02", dayOfWeek: 0, shiftType: "morning", route: "Berger – Oshodi", busCode: "BUS-02", startTime: "08:00", endTime: "16:00", status: "assigned" },
+  { id: "sh49", driverId: "d1", driverName: "Ibrahim Musa", driverCode: "KJA-001", date: "2026-06-03", dayOfWeek: 1, shiftType: "morning", route: "Lagos Island – Oshodi", busCode: "BUS-07", startTime: "06:00", endTime: "14:00", status: "assigned" },
+  { id: "sh50", driverId: "d2", driverName: "Tunde Adeleke", driverCode: "KJA-002", date: "2026-06-03", dayOfWeek: 1, shiftType: "morning", route: "Oshodi – Ikeja", busCode: "BUS-12", startTime: "07:00", endTime: "15:00", status: "assigned" },
+]
+
+export const vehicleBlocks: VehicleBlock[] = [
+  { id: "vb1", busCode: "BUS-07", route: "Lagos Island – Oshodi", date: "2026-05-29", trips: 4, departure: "06:00", driverId: "d1", driverName: "Ibrahim Musa", status: "dispatched" },
+  { id: "vb2", busCode: "BUS-12", route: "Oshodi – Ikeja", date: "2026-05-29", trips: 4, departure: "07:00", driverId: "d2", driverName: "Tunde Adeleke", status: "dispatched" },
+  { id: "vb3", busCode: "BUS-09", route: "Lagos Island – Lekki", date: "2026-05-29", trips: 3, departure: "06:30", driverId: "d4", driverName: "Fatima Garba", status: "dispatched" },
+  { id: "vb4", busCode: "BUS-04", route: "Ojota – CMS", date: "2026-05-29", trips: 3, departure: "06:00", status: "unassigned" },
+  { id: "vb5", busCode: "BUS-02", route: "Berger – Oshodi", date: "2026-05-29", trips: 3, departure: "08:00", driverId: "d6", driverName: "Aminu Danbaba", status: "assigned" },
+  { id: "vb6", busCode: "BUS-01", route: "Lagos Island – Oshodi", date: "2026-05-29", trips: 3, departure: "14:00", status: "unassigned" },
+]
+
 export type DriverIncidentType =
   | "complaint"
   | "reckless_driving"
@@ -374,34 +470,10 @@ export interface DriverIncident {
 }
 
 export const driverIncidents: DriverIncident[] = [
-  {
-    id: "di1", driverId: "d3", driverCode: "KJA-003",
-    type: "late_start", description: "Did not accept assigned shift 38 minutes past scheduled departure. No prior notification given.",
-    date: "2026-05-25", severity: "warning", status: "open",
-  },
-  {
-    id: "di2", driverId: "d5", driverCode: "KJA-005",
-    type: "complaint", description: "Passenger reported rude behaviour and refusal to give correct change on the Berger–Oshodi route.",
-    date: "2026-05-22", severity: "info", status: "resolved",
-  },
-  {
-    id: "di3", driverId: "d8", driverCode: "KJA-008",
-    type: "fraud_suspicion", description: "Cash discrepancy of ₦22,500 found across 3 consecutive trips. Under-declared passenger count suspected.",
-    date: "2026-05-20", severity: "critical", status: "open",
-  },
-  {
-    id: "di4", driverId: "d2", driverCode: "KJA-002",
-    type: "route_deviation", description: "Bus took an unofficial route at Oshodi junction without clearance. Route restored after 12 minutes.",
-    date: "2026-05-18", severity: "warning", status: "dismissed",
-  },
-  {
-    id: "di5", driverId: "d6", driverCode: "KJA-006",
-    type: "no_show", description: "Failed to appear for assigned morning shift on 2026-05-15 without prior notification. Duty reassigned to backup driver.",
-    date: "2026-05-15", severity: "warning", status: "resolved",
-  },
-  {
-    id: "di6", driverId: "d1", driverCode: "KJA-001",
-    type: "complaint", description: "Minor dispute with passenger over change amount. Resolved on-site. Passenger did not escalate.",
-    date: "2026-05-10", severity: "info", status: "resolved",
-  },
+  { id: "di1", driverId: "d3", driverCode: "KJA-003", type: "late_start", description: "Did not accept assigned shift 38 minutes past scheduled departure. No prior notification given.", date: "2026-05-25", severity: "warning", status: "open" },
+  { id: "di2", driverId: "d5", driverCode: "KJA-005", type: "complaint", description: "Passenger reported rude behaviour and refusal to give correct change on the Berger–Oshodi route.", date: "2026-05-22", severity: "info", status: "resolved" },
+  { id: "di3", driverId: "d8", driverCode: "KJA-008", type: "fraud_suspicion", description: "Cash discrepancy of ₦22,500 found across 3 consecutive trips. Under-declared passenger count suspected.", date: "2026-05-20", severity: "critical", status: "open" },
+  { id: "di4", driverId: "d2", driverCode: "KJA-002", type: "route_deviation", description: "Bus took an unofficial route at Oshodi junction without clearance. Route restored after 12 minutes.", date: "2026-05-18", severity: "warning", status: "dismissed" },
+  { id: "di5", driverId: "d6", driverCode: "KJA-006", type: "no_show", description: "Failed to appear for assigned morning shift on 2026-05-15 without prior notification. Duty reassigned to backup driver.", date: "2026-05-15", severity: "warning", status: "resolved" },
+  { id: "di6", driverId: "d1", driverCode: "KJA-001", type: "complaint", description: "Minor dispute with passenger over change amount. Resolved on-site. Passenger did not escalate.", date: "2026-05-10", severity: "info", status: "resolved" },
 ]
