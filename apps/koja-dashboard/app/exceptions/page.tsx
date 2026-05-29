@@ -34,12 +34,7 @@ import type {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -584,41 +579,36 @@ export default function ExceptionsPage() {
         ))}
       </div>
 
-      {/* ─── Exception Detail Dialog ────────────────────────────────────────────── */}
+      {/* ─── Exception Detail Dialog ───────────────────────────────────────────── */}
       <Dialog
         open={!!selectedEx && !showRefundPanel && !showIncidentForm}
-        onOpenChange={open => {
-          if (!open) {
-            setSelectedEx(null)
-            resetActionState()
-          }
+        onClose={() => {
+          setSelectedEx(null)
+          resetActionState()
         }}
+        title={selectedEx?.title}
+        className="max-w-2xl bg-panel border-line-soft max-h-[90vh] overflow-y-auto"
       >
         {selectedEx && (
-          <DialogContent className="max-w-2xl bg-panel border-line-soft max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[var(--subtle-bg)] text-fg-dim">
-                  <CategoryIcon cat={selectedEx.category} size={10} />
-                  {CATEGORY_LABELS[selectedEx.category]}
-                </span>
-                <span
-                  className={cn(
-                    "flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full",
-                    severityBg(selectedEx.severity)
-                  )}
-                >
-                  <SeverityIcon severity={selectedEx.severity} size={11} />
-                  {selectedEx.severity.charAt(0).toUpperCase() + selectedEx.severity.slice(1)}
-                </span>
-                <StatusBadge status={selectedEx.status} />
-              </div>
-              <DialogTitle className="text-base font-bold text-fg leading-snug">
-                {selectedEx.title}
-              </DialogTitle>
-            </DialogHeader>
+          <>
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[var(--subtle-bg)] text-fg-dim">
+                <CategoryIcon cat={selectedEx.category} size={10} />
+                {CATEGORY_LABELS[selectedEx.category]}
+              </span>
+              <span
+                className={cn(
+                  "flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full",
+                  severityBg(selectedEx.severity)
+                )}
+              >
+                <SeverityIcon severity={selectedEx.severity} size={11} />
+                {selectedEx.severity.charAt(0).toUpperCase() + selectedEx.severity.slice(1)}
+              </span>
+              <StatusBadge status={selectedEx.status} />
+            </div>
 
-            <div className="space-y-4 mt-2">
+            <div className="space-y-4">
               <p className="text-sm text-fg-muted">{selectedEx.description}</p>
 
               {/* Context grid */}
@@ -659,7 +649,7 @@ export default function ExceptionsPage() {
                 )}
               </div>
 
-              {/* Quick actions */}
+              {/* Quick actions (call driver, etc.) */}
               {selectedEx.status !== "resolved" && selectedEx.driver && (
                 <div className="flex gap-2">
                   <Button
@@ -1083,31 +1073,23 @@ export default function ExceptionsPage() {
                 </>
               )}
             </div>
-          </DialogContent>
+          </>
         )}
       </Dialog>
 
-      {/* ─── Passenger Refund Panel ──────────────────────────────────────────────── */}
+      {/* ─── Passenger Refund Panel ────────────────────────────────────────────── */}
       <Dialog
         open={showRefundPanel}
-        onOpenChange={open => {
-          if (!open) {
-            setShowRefundPanel(false)
-            setRefundSearch("")
-            setRefundPassenger(null)
-            setConfirmRefund(false)
-          }
+        onClose={() => {
+          setShowRefundPanel(false)
+          setRefundSearch("")
+          setRefundPassenger(null)
+          setConfirmRefund(false)
         }}
+        title="Passenger Refund"
+        className="max-w-lg bg-panel border-line-soft"
       >
-        <DialogContent className="max-w-lg bg-panel border-line-soft">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-fg flex items-center gap-2">
-              <ReceiptItem size={16} color="#f59e0b" variant="Bold" />
-              Passenger Refund Panel
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-2">
+          <div className="space-y-4">
             {!refundPassenger ? (
               <>
                 <div>
@@ -1287,25 +1269,16 @@ export default function ExceptionsPage() {
               </div>
             )}
           </div>
-        </DialogContent>
       </Dialog>
 
-      {/* ─── Incident Report Form ────────────────────────────────────────────────── */}
+      {/* ─── Incident Report Form ──────────────────────────────────────────────── */}
       <Dialog
         open={showIncidentForm}
-        onOpenChange={open => {
-          if (!open) setShowIncidentForm(false)
-        }}
+        onClose={() => setShowIncidentForm(false)}
+        title="Incident Report Form"
+        className="max-w-lg bg-panel border-line-soft max-h-[90vh] overflow-y-auto"
       >
-        <DialogContent className="max-w-lg bg-panel border-line-soft max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-fg flex items-center gap-2">
-              <DocumentText1 size={16} color="#f59e0b" variant="Bold" />
-              Incident Report Form
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-2">
+          <div className="space-y-4">
             {selectedEx && (
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl bg-[var(--subtle-bg)] p-3 text-xs">
                 {selectedEx.route && (
@@ -1445,10 +1418,9 @@ export default function ExceptionsPage() {
               Submit Incident Report
             </Button>
           </div>
-        </DialogContent>
       </Dialog>
 
-      {/* ─── Toast stack ──────────────────────────────────────────────────────────── */}
+      {/* ─── Toast stack ─────────────────────────────────────────────────────────────── */}
       <div className="fixed bottom-5 right-5 flex flex-col gap-2 z-50 pointer-events-none">
         {toasts.map(t => (
           <div
