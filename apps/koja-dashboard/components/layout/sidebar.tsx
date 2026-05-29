@@ -24,6 +24,7 @@ const navItems = [
   { href: "/drivers", label: "Drivers", icon: People },
   { href: "/fleet", label: "Fleet", icon: Bus },
   { href: "/dispatch", label: "Dispatch", icon: Map1 },
+  { href: "/scheduling", label: "Scheduling", icon: Calendar },
   { href: "/alerts", label: "Alerts", icon: Danger, badge: 2 },
   { href: "/reconciliation", label: "Reconciliation", icon: Money },
   { href: "/leave", label: "Leave Requests", icon: Calendar, badge: 2 },
