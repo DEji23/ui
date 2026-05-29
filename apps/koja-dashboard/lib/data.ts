@@ -491,7 +491,7 @@ export const driverIncidents: DriverIncident[] = [
   { id: "di6", driverId: "d1", driverCode: "KJA-001", type: "complaint", description: "Minor dispute with passenger over change amount. Resolved on-site. Passenger did not escalate.", date: "2026-05-10", severity: "info", status: "resolved" },
 ]
 
-// ─── FINANCIALS ─────────────────────────────────────────────────────────────────────────
+// ─── FINANCIALS ─────────────────────────────────────────────────────────────
 
 export type FeeCollector = "platform" | "government" | "union" | "terminal"
 export type TripSettlementStatus = "provisional" | "confirmed" | "fee_calculated" | "approved" | "paid" | "disputed"
@@ -783,4 +783,251 @@ export const complianceDocs: ComplianceDoc[] = [
   { id: "cd11", busId: "b3", busCode: "BUS-03", type: "roadworthiness", name: "Roadworthiness Certificate", expiryDate: "2026-04-30", cost: 20000, region: "Lagos State", issuingAuthority: "VIO", status: "expired", amortizedDailyRate: 55 },
   { id: "cd12", busId: "b2", busCode: "BUS-02", type: "insurance", name: "Third-Party Insurance", expiryDate: "2026-07-10", cost: 180000, region: "Lagos State", issuingAuthority: "NAICOM", status: "expiring_soon", amortizedDailyRate: 493 },
   { id: "cd13", busId: "b2", busCode: "BUS-02", type: "operating_license", name: "Transport Operator Licence", expiryDate: "2026-08-05", cost: 45000, region: "Lagos State", issuingAuthority: "LASTMA", status: "valid", amortizedDailyRate: 123 },
+]
+
+// ─── EXCEPTIONS ───────────────────────────────────────────────────────────────
+
+export type ExceptionCategory = "driver" | "bus_asset" | "trip_route" | "passenger_payment" | "compliance" | "security_incident"
+export type ExceptionStatus = "open" | "in_progress" | "resolved"
+
+export interface ExceptionAuditEntry {
+  timestamp: string
+  action: string
+  actor: string
+  note?: string
+}
+
+export interface Exception {
+  id: string
+  category: ExceptionCategory
+  severity: AlertSeverity
+  title: string
+  description: string
+  route?: string
+  bus?: string
+  driver?: string
+  tripId?: string
+  detectedAt: string
+  status: ExceptionStatus
+  recommendedAction?: string
+  auditLog: ExceptionAuditEntry[]
+  resolvedAt?: string
+  resolvedBy?: string
+  resolution?: string
+}
+
+export interface MockPassenger {
+  id: string
+  name: string
+  phone: string
+  walletBalance: number
+  recentTrips: { date: string; route: string; fare: number; tripId: string }[]
+}
+
+export interface PassengerRefund {
+  id: string
+  passengerId: string
+  passengerName: string
+  passengerPhone: string
+  tripId: string
+  route: string
+  date: string
+  originalCharge: number
+  refundAmount: number
+  reason: string
+  status: "pending" | "approved" | "processed" | "rejected"
+  requestedAt: string
+  processedAt?: string
+  processedBy?: string
+}
+
+export interface IncidentReport {
+  id: string
+  exceptionId?: string
+  incidentType: "passenger_altercation" | "theft" | "assault" | "medical_emergency" | "fire" | "accident" | "fraud" | "suspicious_boarding"
+  timestamp: string
+  route: string
+  bus: string
+  driver: string
+  passengerInvolved?: string
+  description: string
+  actionTaken: string
+  driverSuspended: boolean
+  busLocked: boolean
+  escalatedToPolice: boolean
+  reportedBy: string
+  status: "open" | "under_review" | "closed"
+}
+
+export const mockPassengers: MockPassenger[] = [
+  {
+    id: "p1", name: "Adaeze Nwosu", phone: "080 1122 3344", walletBalance: 4500,
+    recentTrips: [
+      { date: "2026-05-29", route: "Lagos Island – Lekki", fare: 600, tripId: "t4-AM" },
+      { date: "2026-05-29", route: "Lagos Island – Lekki", fare: 600, tripId: "t4-AM" },
+      { date: "2026-05-28", route: "Lagos Island – Lekki", fare: 600, tripId: "t9-AM" },
+    ],
+  },
+  {
+    id: "p2", name: "Emeka Okeke", phone: "080 5566 7788", walletBalance: 2200,
+    recentTrips: [
+      { date: "2026-05-29", route: "Ojota – CMS", fare: 500, tripId: "t6-AM" },
+      { date: "2026-05-28", route: "Ojota – CMS", fare: 500, tripId: "t6-PM" },
+    ],
+  },
+  {
+    id: "p3", name: "Chidinma Eze", phone: "080 9900 1122", walletBalance: 8000,
+    recentTrips: [
+      { date: "2026-05-29", route: "Oshodi – Ikeja", fare: 400, tripId: "t3-AM" },
+      { date: "2026-05-29", route: "Oshodi – Ikeja", fare: 400, tripId: "t3-AM" },
+    ],
+  },
+]
+
+export const exceptions: Exception[] = [
+  {
+    id: "ex1", category: "driver", severity: "critical",
+    title: "Driver No-Show — KJA-003",
+    description: "Chukwuemeka Obi failed to check in for scheduled morning shift. Departure was 06:00. Duty unassigned and BUS-04 standing idle at terminal.",
+    route: "Ojota – CMS", bus: "BUS-04", driver: "Chukwuemeka Obi",
+    detectedAt: "06:44 AM", status: "open",
+    recommendedAction: "Assign replacement driver",
+    auditLog: [{ timestamp: "06:44 AM", action: "Exception detected — driver did not check in for scheduled 06:00 departure", actor: "System" }],
+  },
+  {
+    id: "ex2", category: "driver", severity: "high",
+    title: "Mid-Trip Swap Request — KJA-002",
+    description: "Tunde Adeleke requested driver swap at Ikeja due to fatigue. Trip 3 of 4 currently in progress. Handover required before next trip departs.",
+    route: "Oshodi – Ikeja", bus: "BUS-12", driver: "Tunde Adeleke",
+    detectedAt: "10:15 AM", status: "in_progress",
+    recommendedAction: "Assign replacement driver with handover location",
+    auditLog: [
+      { timestamp: "10:15 AM", action: "Swap request received from driver KJA-002 via app", actor: "System" },
+      { timestamp: "10:18 AM", action: "Exception acknowledged by dispatcher — searching for available driver", actor: "Dispatch" },
+    ],
+  },
+  {
+    id: "ex3", category: "bus_asset", severity: "critical",
+    title: "Bus Breakdown — BUS-03 (Pre-Trip)",
+    description: "BUS-03 failed pre-trip inspection. Engine fault light triggered at terminal. Bus removed from scheduled Berger–Oshodi service today.",
+    route: "Berger – Oshodi", bus: "BUS-03",
+    detectedAt: "05:50 AM", status: "in_progress",
+    recommendedAction: "Assign replacement bus",
+    auditLog: [
+      { timestamp: "05:50 AM", action: "Pre-trip inspection failed — engine fault code triggered", actor: "System" },
+      { timestamp: "06:05 AM", action: "Bus removed from active service roster for today", actor: "Fleet Manager" },
+    ],
+  },
+  {
+    id: "ex4", category: "bus_asset", severity: "high",
+    title: "Mid-Trip Bus Breakdown — BUS-07",
+    description: "BUS-07 reported transmission fault en route on Third Mainland Bridge. 18 passengers onboard. Replacement dispatch needed — passengers must not be double-billed.",
+    route: "Lagos Island – Oshodi", bus: "BUS-07", driver: "Ibrahim Musa", tripId: "t2",
+    detectedAt: "09:22 AM", status: "open",
+    recommendedAction: "Dispatch replacement bus + manage passenger transfer (no double billing)",
+    auditLog: [{ timestamp: "09:22 AM", action: "Transmission fault reported by driver KJA-001 — bus stationary on Third Mainland Bridge", actor: "System" }],
+  },
+  {
+    id: "ex5", category: "trip_route", severity: "warning",
+    title: "Route Deviation Detected — BUS-09",
+    description: "BUS-09 GPS shows 1.2km deviation from assigned Lagos Island–Lekki corridor near Ajah junction. No official diversion clearance on file.",
+    route: "Lagos Island – Lekki", bus: "BUS-09", driver: "Fatima Garba",
+    detectedAt: "10:42 AM", status: "open",
+    recommendedAction: "Contact driver and log route deviation",
+    auditLog: [{ timestamp: "10:42 AM", action: "Route deviation flagged automatically by GPS tracking — 1.2km off assigned corridor", actor: "System" }],
+  },
+  {
+    id: "ex6", category: "trip_route", severity: "warning",
+    title: "Overcapacity — BUS-09 Trip 2",
+    description: "BUS-09 boarded 34 passengers against rated capacity of 30. Driver allowed additional boardings at Lekki Phase 1 stop. Requires admin override or offboarding.",
+    route: "Lagos Island – Lekki", bus: "BUS-09", driver: "Fatima Garba", tripId: "t1",
+    detectedAt: "09:55 AM", status: "open",
+    recommendedAction: "Admin override required — document justification or instruct driver to offboard 4 passengers",
+    auditLog: [{ timestamp: "09:55 AM", action: "Passenger count exceeded rated capacity by 4 — AFC system flagged boarding anomaly", actor: "System" }],
+  },
+  {
+    id: "ex7", category: "passenger_payment", severity: "high",
+    title: "Double-Charge Complaint — Adaeze Nwosu",
+    description: "Passenger Adaeze Nwosu was charged twice on Lagos Island – Lekki trip, 29 May 2026. Both deductions confirmed in wallet log. ₦600 refund due.",
+    route: "Lagos Island – Lekki",
+    detectedAt: "10:05 AM", status: "open",
+    recommendedAction: "Issue passenger refund via wallet",
+    auditLog: [{ timestamp: "10:05 AM", action: "Double-charge complaint logged via passenger helpline — wallet deduction verified", actor: "System" }],
+  },
+  {
+    id: "ex8", category: "passenger_payment", severity: "warning",
+    title: "QR Scanner Offline — BUS-12 Trip 3",
+    description: "Boarding QR scanner on BUS-12 failed for 6 passengers at Oshodi terminal. Passengers unable to board digitally. Fallback cash boarding decision pending.",
+    route: "Oshodi – Ikeja", bus: "BUS-12", driver: "Tunde Adeleke",
+    detectedAt: "09:18 AM", status: "in_progress",
+    recommendedAction: "Apply fallback boarding rule — manually log passenger count",
+    auditLog: [
+      { timestamp: "09:18 AM", action: "QR scanner offline reported by driver KJA-002 — 6 passengers queued", actor: "System" },
+      { timestamp: "09:20 AM", action: "Fallback boarding authorised — manual headcount logging activated", actor: "Dispatch" },
+    ],
+  },
+  {
+    id: "ex9", category: "compliance", severity: "critical",
+    title: "Hours Limit Exceeded — KJA-005",
+    description: "Seun Adeyemi has accumulated 48 hours this week, exceeding the 45-hour regulatory limit. System has blocked further assignment. Documented override required to proceed.",
+    driver: "Seun Adeyemi",
+    detectedAt: "Yesterday 22:00", status: "open",
+    recommendedAction: "Force end shift / swap driver / approve extension with documented justification",
+    auditLog: [{ timestamp: "Yesterday 22:00", action: "Weekly hours limit exceeded — KJA-005 at 48h against 45h regulatory cap", actor: "System" }],
+  },
+  {
+    id: "ex10", category: "compliance", severity: "warning",
+    title: "No Break Logged — KJA-001",
+    description: "Ibrahim Musa completed 3 consecutive trips without a recorded rest break. Policy requires minimum 20-minute break after 4 hours on duty.",
+    driver: "Ibrahim Musa", route: "Lagos Island – Oshodi",
+    detectedAt: "11:30 AM", status: "open",
+    recommendedAction: "Force break before next assigned trip",
+    auditLog: [{ timestamp: "11:30 AM", action: "No rest break logged after 4h 30m continuous duty — compliance policy triggered", actor: "System" }],
+  },
+  {
+    id: "ex11", category: "security_incident", severity: "critical",
+    title: "Code Red — KJA-006 at Oshodi Terminal",
+    description: "Aminu Danbaba triggered silent emergency at Oshodi Terminal. Passenger confrontation escalated physically. Police notified. Incident requires formal report and driver welfare check.",
+    route: "Berger – Oshodi", bus: "BUS-02", driver: "Aminu Danbaba",
+    detectedAt: "Yesterday 14:20", status: "in_progress",
+    recommendedAction: "File incident report — assess driver for suspension pending review",
+    auditLog: [
+      { timestamp: "Yesterday 14:20", action: "Silent emergency triggered by driver KJA-006 at Oshodi Terminal", actor: "System" },
+      { timestamp: "Yesterday 14:22", action: "Police notified. Fleet manager and supervisor alerted.", actor: "System" },
+      { timestamp: "Yesterday 14:35", action: "Situation defused. Driver safe. Passengers evacuated front section.", actor: "Fleet Manager" },
+    ],
+  },
+  {
+    id: "ex12", category: "security_incident", severity: "high",
+    title: "Suspicious QR Fraud — BUS-04",
+    description: "AFC system detected 8 boardings using duplicate QR codes on BUS-04 morning trip. Possible organised QR code fraud. Boarding records flagged for investigation.",
+    bus: "BUS-04", route: "Ojota – CMS",
+    detectedAt: "07:45 AM", status: "open",
+    recommendedAction: "Lock bus QR/AFC system and investigate boarding records",
+    auditLog: [{ timestamp: "07:45 AM", action: "8 duplicate QR code boardings detected on AFC system — fraud pattern flagged", actor: "System" }],
+  },
+]
+
+export const incidentReports: IncidentReport[] = [
+  {
+    id: "ir1", exceptionId: "ex11",
+    incidentType: "passenger_altercation",
+    timestamp: "Yesterday 14:20",
+    route: "Berger – Oshodi", bus: "BUS-02", driver: "Aminu Danbaba",
+    passengerInvolved: "Unknown — male, approx 35 yrs, grey shirt",
+    description: "Passenger became aggressive when asked to board via queue at Oshodi Terminal. Verbal altercation escalated to physical confrontation. Driver triggered emergency alert. Other passengers evacuated to front section.",
+    actionTaken: "Police notified and attended scene. Area secured. Driver given water and rest period. Passengers transferred to BUS-01 to complete route.",
+    driverSuspended: false, busLocked: false, escalatedToPolice: true,
+    reportedBy: "Fleet Manager", status: "under_review",
+  },
+]
+
+export const passengerRefunds: PassengerRefund[] = [
+  {
+    id: "rf1", passengerId: "p1", passengerName: "Adaeze Nwosu", passengerPhone: "080 1122 3344",
+    tripId: "t4-AM", route: "Lagos Island – Lekki", date: "2026-05-29",
+    originalCharge: 1200, refundAmount: 600,
+    reason: "Double charge — AFC system deducted twice on single boarding event",
+    status: "pending", requestedAt: "10:05 AM",
+  },
 ]
