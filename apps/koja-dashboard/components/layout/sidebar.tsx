@@ -18,6 +18,7 @@ import {
   ArrowRight2,
   Sun1,
   Moon,
+  Warning2,
 } from "iconsax-react"
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/scheduling", label: "Scheduling", icon: Calendar },
   { href: "/financials", label: "Financials", icon: Moneys },
   { href: "/alerts", label: "Alerts", icon: Danger, badge: 2 },
+  { href: "/exceptions", label: "Exceptions", icon: Warning2, badge: 6 },
   { href: "/reconciliation", label: "Reconciliation", icon: Money },
   { href: "/leave", label: "Leave Requests", icon: Calendar, badge: 2 },
 ]
