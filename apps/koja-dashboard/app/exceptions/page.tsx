@@ -36,17 +36,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<ExceptionCategory, string> = {
   driver: "Driver",
@@ -147,7 +141,7 @@ const NOTIFY_PASSENGERS_ACTIONS = new Set([
   "delay_trip", "cancel_trip", "correct_route", "terminate_refund",
 ])
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
 function severityBorder(s: string) {
   if (s === "critical") return "border-l-red-500"
@@ -185,7 +179,7 @@ function CategoryIcon({ cat, size = 13 }: { cat: ExceptionCategory; size?: numbe
   return <SecuritySafe size={size} color="currentColor" variant="Linear" />
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ───────────────────────────────────────────────────────────────────────────────────────
 
 export default function ExceptionsPage() {
   const [exList, setExList] = useState<Exception[]>(initialExceptions)
@@ -579,7 +573,7 @@ export default function ExceptionsPage() {
         ))}
       </div>
 
-      {/* ─── Exception Detail Dialog ───────────────────────────────────────────── */}
+      {/* ─── Exception Detail Dialog ──────────────────────────────────────────────────────────────── */}
       <Dialog
         open={!!selectedEx && !showRefundPanel && !showIncidentForm}
         onClose={() => {
@@ -691,22 +685,16 @@ export default function ExceptionsPage() {
 
                     <Select
                       value={actionType}
-                      onValueChange={v => {
-                        setActionType(v)
+                      onChange={e => {
+                        setActionType(e.target.value)
                         setConfirmStep(false)
                         setNotifyPassengers(true)
                       }}
                     >
-                      <SelectTrigger className="bg-surface border-line-soft text-fg text-sm">
-                        <SelectValue placeholder="Select action to take…" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-panel border-line-soft">
-                        {CATEGORY_ACTIONS[selectedEx.category].map(a => (
-                          <SelectItem key={a.value} value={a.value} className="text-fg text-sm">
-                            {a.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                      <option value="">Select action to take…</option>
+                      {CATEGORY_ACTIONS[selectedEx.category].map(a => (
+                        <option key={a.value} value={a.value}>{a.label}</option>
+                      ))}
                     </Select>
 
                     {actionType && (
@@ -715,17 +703,13 @@ export default function ExceptionsPage() {
                         {(actionType === "reassign_driver" || actionType === "dispatch_replacement") && (
                           <div>
                             <p className="text-xs text-fg-dim mb-1.5">Select replacement driver</p>
-                            <Select value={replacementDriver} onValueChange={setReplacementDriver}>
-                              <SelectTrigger className="bg-surface border-line-soft text-fg text-sm">
-                                <SelectValue placeholder="Choose available driver…" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-panel border-line-soft">
-                                {availableDrivers.map(d => (
-                                  <SelectItem key={d.id} value={d.id} className="text-fg text-sm">
-                                    {d.name} ({d.code}) · {d.hoursThisWeek}h this wk · {d.complianceStatus}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
+                            <Select value={replacementDriver} onChange={e => setReplacementDriver(e.target.value)}>
+                              <option value="">Choose available driver…</option>
+                              {availableDrivers.map(d => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name} ({d.code}) · {d.hoursThisWeek}h this wk · {d.complianceStatus}
+                                </option>
+                              ))}
                             </Select>
                             {replacementDriver && (() => {
                               const d = drivers.find(dr => dr.id === replacementDriver)
@@ -766,17 +750,13 @@ export default function ExceptionsPage() {
                         {(actionType === "assign_replacement_bus" || actionType === "dispatch_replacement") && (
                           <div>
                             <p className="text-xs text-fg-dim mb-1.5">Select replacement bus</p>
-                            <Select value={replacementBus} onValueChange={setReplacementBus}>
-                              <SelectTrigger className="bg-surface border-line-soft text-fg text-sm">
-                                <SelectValue placeholder="Choose available bus…" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-panel border-line-soft">
-                                {availableBuses.map(b => (
-                                  <SelectItem key={b.id} value={b.id} className="text-fg text-sm">
-                                    {b.code} — {b.model} · Cap {b.capacity} · Fuel {b.fuelLevel}%
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
+                            <Select value={replacementBus} onChange={e => setReplacementBus(e.target.value)}>
+                              <option value="">Choose available bus…</option>
+                              {availableBuses.map(b => (
+                                <option key={b.id} value={b.id}>
+                                  {b.code} — {b.model} · Cap {b.capacity} · Fuel {b.fuelLevel}%
+                                </option>
+                              ))}
                             </Select>
                             {actionType === "dispatch_replacement" && (
                               <div className="mt-2 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-400">
@@ -894,17 +874,11 @@ export default function ExceptionsPage() {
                           <>
                             <div>
                               <p className="text-xs text-fg-dim mb-1.5">Reason</p>
-                              <Select value={reason} onValueChange={setReason}>
-                                <SelectTrigger className="bg-surface border-line-soft text-fg text-sm">
-                                  <SelectValue placeholder="Select reason…" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-panel border-line-soft">
-                                  {(REASON_OPTIONS[actionType] ?? []).map(r => (
-                                    <SelectItem key={r} value={r} className="text-fg text-sm">
-                                      {r}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
+                              <Select value={reason} onChange={e => setReason(e.target.value)}>
+                                <option value="">Select reason…</option>
+                                {(REASON_OPTIONS[actionType] ?? []).map(r => (
+                                  <option key={r} value={r}>{r}</option>
+                                ))}
                               </Select>
                             </div>
                             <div>
@@ -1077,7 +1051,7 @@ export default function ExceptionsPage() {
         )}
       </Dialog>
 
-      {/* ─── Passenger Refund Panel ────────────────────────────────────────────── */}
+      {/* ─── Passenger Refund Panel ─────────────────────────────────────────────────────────────────────────── */}
       <Dialog
         open={showRefundPanel}
         onClose={() => {
@@ -1186,17 +1160,11 @@ export default function ExceptionsPage() {
                   </div>
                   <div>
                     <p className="text-xs text-fg-dim mb-1.5">Reason</p>
-                    <Select value={refundReason} onValueChange={setRefundReason}>
-                      <SelectTrigger className="bg-surface border-line-soft text-fg text-sm">
-                        <SelectValue placeholder="Select…" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-panel border-line-soft">
-                        {["Double charge", "Overcharged fare", "AFC error", "Wrong route billed", "Driver error", "Trip terminated"].map(r => (
-                          <SelectItem key={r} value={r} className="text-fg text-sm">
-                            {r}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={refundReason} onChange={e => setRefundReason(e.target.value)}>
+                      <option value="">Select…</option>
+                      {["Double charge", "Overcharged fare", "AFC error", "Wrong route billed", "Driver error", "Trip terminated"].map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
                     </Select>
                   </div>
                 </div>
@@ -1271,7 +1239,7 @@ export default function ExceptionsPage() {
           </div>
       </Dialog>
 
-      {/* ─── Incident Report Form ──────────────────────────────────────────────── */}
+      {/* ─── Incident Report Form ──────────────────────────────────────────────────────────────────────────────── */}
       <Dialog
         open={showIncidentForm}
         onClose={() => setShowIncidentForm(false)}
@@ -1308,26 +1276,20 @@ export default function ExceptionsPage() {
 
             <div>
               <p className="text-xs text-fg-dim mb-1.5">Incident type</p>
-              <Select value={incidentType} onValueChange={setIncidentType}>
-                <SelectTrigger className="bg-surface border-line-soft text-fg text-sm">
-                  <SelectValue placeholder="Select incident type…" />
-                </SelectTrigger>
-                <SelectContent className="bg-panel border-line-soft">
-                  {[
-                    { value: "passenger_altercation", label: "Passenger Altercation" },
-                    { value: "theft", label: "Theft" },
-                    { value: "assault", label: "Assault" },
-                    { value: "medical_emergency", label: "Medical Emergency" },
-                    { value: "fire", label: "Fire / Smoke" },
-                    { value: "accident", label: "Road Accident" },
-                    { value: "fraud", label: "Fraud / QR Abuse" },
-                    { value: "suspicious_boarding", label: "Suspicious Boarding" },
-                  ].map(t => (
-                    <SelectItem key={t.value} value={t.value} className="text-fg text-sm">
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+              <Select value={incidentType} onChange={e => setIncidentType(e.target.value)}>
+                <option value="">Select incident type…</option>
+                {[
+                  { value: "passenger_altercation", label: "Passenger Altercation" },
+                  { value: "theft", label: "Theft" },
+                  { value: "assault", label: "Assault" },
+                  { value: "medical_emergency", label: "Medical Emergency" },
+                  { value: "fire", label: "Fire / Smoke" },
+                  { value: "accident", label: "Road Accident" },
+                  { value: "fraud", label: "Fraud / QR Abuse" },
+                  { value: "suspicious_boarding", label: "Suspicious Boarding" },
+                ].map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </Select>
             </div>
 
@@ -1420,7 +1382,7 @@ export default function ExceptionsPage() {
           </div>
       </Dialog>
 
-      {/* ─── Toast stack ─────────────────────────────────────────────────────────────── */}
+      {/* ─── Toast stack ───────────────────────────────────────────────────────────────────────────────────────────── */}
       <div className="fixed bottom-5 right-5 flex flex-col gap-2 z-50 pointer-events-none">
         {toasts.map(t => (
           <div
