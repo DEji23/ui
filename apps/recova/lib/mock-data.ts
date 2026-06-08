@@ -89,6 +89,71 @@ export interface Mandate {
   expiryDate: string
 }
 
+export interface DisputeNote {
+  id: string
+  author: string
+  role: string
+  timestamp: string
+  text: string
+}
+
+export interface ApprovalRequest {
+  id: string
+  type: "WRITE_OFF" | "POLICY_CHANGE" | "MANDATE_SETUP" | "ESCALATION" | "SETTLEMENT_REVERSAL" | "RATE_CHANGE"
+  title: string
+  description: string
+  initiator: string
+  initiatorRole: string
+  initiatedAt: string
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED"
+  checker: string | null
+  checkedAt: string | null
+  rejectionReason: string | null
+  entityId: string
+  amount?: number
+  expiresAt: string
+  module: string
+}
+
+export interface IgreeCase {
+  id: string
+  loanId: string
+  borrower: string
+  phone: string
+  email: string
+  bank: string
+  outstanding: number
+  rail: RecoveryRail
+  consentStatus: "NOT_SENT" | "LINK_SENT" | "OPENED" | "CONSENTED" | "DECLINED" | "EXPIRED"
+  sentAt: string | null
+  consentedAt: string | null
+  linkExpiry: string | null
+  dro: string
+}
+
+export interface WebhookEndpoint {
+  id: string
+  url: string
+  events: string[]
+  status: "ACTIVE" | "INACTIVE" | "FAILING"
+  secret: string
+  lastDelivery: string | null
+  successRate: number
+  createdAt: string
+}
+
+export interface ApiKey {
+  id: string
+  name: string
+  prefix: string
+  scopes: string[]
+  createdAt: string
+  lastUsed: string | null
+  expiresAt: string | null
+  status: "ACTIVE" | "REVOKED"
+  createdBy: string
+}
+
 export interface AuditEvent {
   id: string
   timestamp: string
@@ -607,3 +672,479 @@ export const auditEvents: AuditEvent[] = [
   { id: "AUD-007", timestamp: "2025-05-23T17:00:00Z", actor: "Kunle Adesanya", role: "Compliance Officer", action: "Write-off request for LN-78134 approved by compliance", module: "RECOVERY", entityId: "LN-78134", ipAddress: "196.23.45.70" },
   { id: "AUD-008", timestamp: "2025-05-23T14:20:00Z", actor: "Yusuf Ibrahim", role: "DRO", action: "iGree consent link sent to Aisha Mohammed (+234 806 789 0123)", module: "MANDATE", entityId: "LN-41023", ipAddress: "196.23.45.88" },
 ]
+
+export const disputeNotes: Record<string, DisputeNote[]> = {
+  "DSP-001": [
+    { id: "n1", author: "Adaora Nwosu", role: "Recovery Manager", timestamp: "2025-05-21T10:00:00Z", text: "Opened investigation. Contacted borrower — claims she never authorised the mandate. Requested signed mandate form from NDD team." },
+    { id: "n2", author: "Fatima Bello", role: "DRO", timestamp: "2025-05-22T14:30:00Z", text: "NDD team confirmed mandate was set up via iGree link sent on 2024-10-01. Forwarded consent log to borrower." },
+  ],
+  "DSP-003": [
+    { id: "n3", author: "Chidi Okeke", role: "Senior DRO", timestamp: "2025-05-20T09:00:00Z", text: "Debit of ₦1,800,000 exceeds the mandate cap of ₦500,000. Likely a system error during mandate threshold update. Escalating to compliance." },
+  ],
+  "DSP-004": [
+    { id: "n4", author: "Adaora Nwosu", role: "Recovery Manager", timestamp: "2025-05-19T15:00:00Z", text: "Serious allegation — borrower claims loan was not taken by her. Police report attached. Escalating to legal immediately. All collections paused." },
+  ],
+}
+
+export const approvalRequests: ApprovalRequest[] = [
+  {
+    id: "APR-001",
+    type: "WRITE_OFF",
+    title: "Write-off request — LN-78134 (Kemi Olusanya)",
+    description: "Loan has been in RECOVERY_FAILED state for 90+ days. All collection attempts exhausted. Requesting write-off of ₦750,000 outstanding balance.",
+    initiator: "Yusuf Ibrahim",
+    initiatorRole: "DRO",
+    initiatedAt: "2025-05-23T11:00:00Z",
+    status: "PENDING",
+    checker: null,
+    checkedAt: null,
+    rejectionReason: null,
+    entityId: "LN-78134",
+    amount: 750000,
+    expiresAt: "2025-05-30T00:00:00Z",
+    module: "RECOVERY",
+  },
+  {
+    id: "APR-002",
+    type: "POLICY_CHANGE",
+    title: "Update retry schedule — reduce interval from 7d to 3d",
+    description: "Policy POL-RETRY-001: Change NDD retry interval from 7 business days to 3 business days for TIER_1 loans. Expected to improve early recovery rate by ~12%.",
+    initiator: "Adaora Nwosu",
+    initiatorRole: "Recovery Manager",
+    initiatedAt: "2025-05-24T12:45:00Z",
+    status: "PENDING",
+    checker: null,
+    checkedAt: null,
+    rejectionReason: null,
+    entityId: "POL-RETRY-001",
+    expiresAt: "2025-05-31T00:00:00Z",
+    module: "SYSTEM",
+  },
+  {
+    id: "APR-003",
+    type: "SETTLEMENT_REVERSAL",
+    title: "Settlement reversal — STL-004 (Aisha Mohammed)",
+    description: "Settlement STL-004 of ₦800,000 was collected during active dispute DSP-001. Requesting reversal per dispute resolution protocol.",
+    initiator: "Adaora Nwosu",
+    initiatorRole: "Recovery Manager",
+    initiatedAt: "2025-05-22T09:00:00Z",
+    status: "APPROVED",
+    checker: "Kunle Adesanya",
+    checkedAt: "2025-05-22T16:00:00Z",
+    rejectionReason: null,
+    entityId: "STL-004",
+    amount: 800000,
+    expiresAt: "2025-05-29T00:00:00Z",
+    module: "SETTLEMENT",
+  },
+  {
+    id: "APR-004",
+    type: "ESCALATION",
+    title: "Escalate LN-55247 to Legal — Chidinma Obi",
+    description: "Loan 70 DPD, all mandates expired, EasyPay exhausted. Recommending legal escalation with demand letter. Outstanding: ₦3,000,000.",
+    initiator: "Chidi Okeke",
+    initiatorRole: "Senior DRO",
+    initiatedAt: "2025-05-20T08:00:00Z",
+    status: "APPROVED",
+    checker: "Adaora Nwosu",
+    checkedAt: "2025-05-20T14:30:00Z",
+    rejectionReason: null,
+    entityId: "LN-55247",
+    amount: 3000000,
+    expiresAt: "2025-05-27T00:00:00Z",
+    module: "RECOVERY",
+  },
+  {
+    id: "APR-005",
+    type: "RATE_CHANGE",
+    title: "Adjust interest rate — LN-62891 (Babatunde Adekoya)",
+    description: "Borrower has engaged for restructuring. Proposing reduction of interest rate from 20% to 15% p.a. to facilitate settlement.",
+    initiator: "Kemi Okonkwo",
+    initiatorRole: "DRO",
+    initiatedAt: "2025-05-24T09:00:00Z",
+    status: "REJECTED",
+    checker: "Adaora Nwosu",
+    checkedAt: "2025-05-24T11:00:00Z",
+    rejectionReason: "Rate reduction not within DRO authority. Requires CFO sign-off. Please escalate through proper channel.",
+    entityId: "LN-62891",
+    expiresAt: "2025-05-31T00:00:00Z",
+    module: "RECOVERY",
+  },
+  {
+    id: "APR-006",
+    type: "WRITE_OFF",
+    title: "Partial write-off request — LN-19302 (Ngozi Adeyemi)",
+    description: "Borrower has offered ₦600,000 as full and final settlement of ₦1,050,000 outstanding. Requesting write-off of ₦450,000 balance.",
+    initiator: "Chidi Okeke",
+    initiatorRole: "Senior DRO",
+    initiatedAt: "2025-05-25T08:00:00Z",
+    status: "PENDING",
+    checker: null,
+    checkedAt: null,
+    rejectionReason: null,
+    entityId: "LN-19302",
+    amount: 450000,
+    expiresAt: "2025-06-01T00:00:00Z",
+    module: "RECOVERY",
+  },
+]
+
+export const igreeCases: IgreeCase[] = [
+  {
+    id: "IG-001",
+    loanId: "LN-28471",
+    borrower: "Emeka Okafor",
+    phone: "+234 802 345 6789",
+    email: "emeka.okafor@email.com",
+    bank: "Access Bank",
+    outstanding: 487500,
+    rail: "NDD",
+    consentStatus: "CONSENTED",
+    sentAt: "2024-10-01T09:00:00Z",
+    consentedAt: "2024-10-01T11:23:00Z",
+    linkExpiry: "2024-10-08T09:00:00Z",
+    dro: "Fatima Bello",
+  },
+  {
+    id: "IG-002",
+    loanId: "LN-19302",
+    borrower: "Ngozi Adeyemi",
+    phone: "+234 803 456 7890",
+    email: "ngozi.a@gmail.com",
+    bank: "GTBank",
+    outstanding: 1050000,
+    rail: "REMITA",
+    consentStatus: "CONSENTED",
+    sentAt: "2024-09-15T10:00:00Z",
+    consentedAt: "2024-09-16T08:45:00Z",
+    linkExpiry: "2024-09-22T10:00:00Z",
+    dro: "Chidi Okeke",
+  },
+  {
+    id: "IG-003",
+    loanId: "LN-41023",
+    borrower: "Aisha Mohammed",
+    phone: "+234 806 789 0123",
+    email: "aisha.m@outlook.com",
+    bank: "First Bank",
+    outstanding: 800000,
+    rail: "NDD",
+    consentStatus: "DECLINED",
+    sentAt: "2024-10-20T09:00:00Z",
+    consentedAt: null,
+    linkExpiry: "2024-10-27T09:00:00Z",
+    dro: "Yusuf Ibrahim",
+  },
+  {
+    id: "IG-004",
+    loanId: "LN-62891",
+    borrower: "Babatunde Adekoya",
+    phone: "+234 808 901 2345",
+    email: "b.adekoya@gmail.com",
+    bank: "Stanbic IBTC",
+    outstanding: 450000,
+    rail: "NDD",
+    consentStatus: "NOT_SENT",
+    sentAt: null,
+    consentedAt: null,
+    linkExpiry: null,
+    dro: "Kemi Okonkwo",
+  },
+  {
+    id: "IG-005",
+    loanId: "LN-78134",
+    borrower: "Kemi Olusanya",
+    phone: "+234 809 012 3456",
+    email: "kemi.o@yahoo.com",
+    bank: "Fidelity Bank",
+    outstanding: 750000,
+    rail: "NDD",
+    consentStatus: "EXPIRED",
+    sentAt: "2025-04-01T09:00:00Z",
+    consentedAt: null,
+    linkExpiry: "2025-04-08T09:00:00Z",
+    dro: "Yusuf Ibrahim",
+  },
+  {
+    id: "IG-006",
+    loanId: "LN-89456",
+    borrower: "Segun Adewale",
+    phone: "+234 810 123 4567",
+    email: "segun.ade@company.ng",
+    bank: "Polaris Bank",
+    outstanding: 1800000,
+    rail: "REMITA",
+    consentStatus: "LINK_SENT",
+    sentAt: "2025-05-24T10:00:00Z",
+    consentedAt: null,
+    linkExpiry: "2025-05-31T10:00:00Z",
+    dro: "Fatima Bello",
+  },
+]
+
+export const webhooks: WebhookEndpoint[] = [
+  {
+    id: "WH-001",
+    url: "https://core.vfdbank.ng/recovery/webhook",
+    events: ["mandate.created", "mandate.debited", "mandate.failed", "settlement.completed"],
+    status: "ACTIVE",
+    secret: "whsec_••••••••••••••••",
+    lastDelivery: "2025-05-24T16:30:00Z",
+    successRate: 99.2,
+    createdAt: "2024-09-01",
+  },
+  {
+    id: "WH-002",
+    url: "https://notify.vfdbank.ng/hooks/recova",
+    events: ["dispute.opened", "dispute.resolved", "sla.breached"],
+    status: "ACTIVE",
+    secret: "whsec_••••••••••••••••",
+    lastDelivery: "2025-05-24T10:15:00Z",
+    successRate: 97.8,
+    createdAt: "2024-10-15",
+  },
+  {
+    id: "WH-003",
+    url: "https://audit.vfdbank.ng/ingest",
+    events: ["*"],
+    status: "FAILING",
+    secret: "whsec_••••••••••••••••",
+    lastDelivery: "2025-05-23T08:00:00Z",
+    successRate: 61.4,
+    createdAt: "2025-01-10",
+  },
+]
+
+export const apiKeys: ApiKey[] = [
+  {
+    id: "AK-001",
+    name: "Core Banking Integration",
+    prefix: "rvk_live_xK9m••••",
+    scopes: ["loans:read", "mandates:write", "settlements:read"],
+    createdAt: "2024-09-01",
+    lastUsed: "2025-05-24T16:28:00Z",
+    expiresAt: null,
+    status: "ACTIVE",
+    createdBy: "Adaora Nwosu",
+  },
+  {
+    id: "AK-002",
+    name: "Reporting Service",
+    prefix: "rvk_live_pQ3n••••",
+    scopes: ["loans:read", "settlements:read", "audit:read"],
+    createdAt: "2024-11-15",
+    lastUsed: "2025-05-24T08:00:00Z",
+    expiresAt: "2025-11-15",
+    status: "ACTIVE",
+    createdBy: "Kunle Adesanya",
+  },
+  {
+    id: "AK-003",
+    name: "Old Mobile App Key",
+    prefix: "rvk_live_bR7j••••",
+    scopes: ["loans:read"],
+    createdAt: "2024-07-01",
+    lastUsed: "2025-01-10T12:00:00Z",
+    expiresAt: "2025-07-01",
+    status: "REVOKED",
+    createdBy: "Adaora Nwosu",
+  },
+]
+
+// ─── Operations Command Center Data ───────────────────────────────────────────
+
+export interface Incident {
+  id: string
+  timestamp: string
+  type: "LATENCY" | "FAILURE_RATE" | "DUPLICATE" | "OUTAGE" | "THRESHOLD_BREACH"
+  severity: "INFO" | "WARNING" | "CRITICAL"
+  rail?: RecoveryRail
+  bank?: string
+  message: string
+  resolved: boolean
+}
+
+export interface FailedRecovery {
+  id: string
+  loanId: string
+  borrower: string
+  phone: string
+  amount: number
+  failureReason: "INSUFFICIENT_FUNDS" | "ACCOUNT_DORMANT" | "MANDATE_EXPIRED" | "BANK_TIMEOUT" | "INVALID_ACCOUNT" | "DAILY_LIMIT_EXCEEDED"
+  lastAttempt: string
+  attempts: number
+  maxAttempts: number
+  assignedTo: string | null
+  rail: RecoveryRail
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "PAUSED"
+  recommendations: { action: string; reason: string; confidence: "HIGH" | "MEDIUM" | "LOW" }[]
+}
+
+export interface ReconciliationException {
+  id: string
+  transactionId: string
+  loanId: string
+  borrower: string
+  amount: number
+  internalStatus: "SUCCESS" | "PENDING" | "FAILED"
+  bankStatus: "CONFIRMED" | "UNKNOWN" | "REJECTED" | "PENDING"
+  exceptionType: "STATUS_MISMATCH" | "DUPLICATE_DEBIT" | "AMOUNT_MISMATCH" | "MISSING_CREDIT"
+  createdAt: string
+  assignedTo: string | null
+  rail: RecoveryRail
+}
+
+export interface Obligation {
+  id: string
+  loanId: string
+  dueDate: string
+  amount: number
+  status: "PAID" | "PARTIAL" | "PENDING" | "OVERDUE" | "WAIVED"
+  paidAmount?: number
+  paidAt?: string
+}
+
+export interface BorrowerAccount {
+  id: string
+  loanId: string
+  bank: string
+  accountNumber: string
+  mandateStatus: MandateStatus | null
+  inboundScore: number | null
+  lastKnownBalance: number | null
+  lastChecked: string | null
+  isPrimary: boolean
+}
+
+export interface PolicyConfig {
+  retry_intervals: number[]
+  max_attempts: number
+  partial_recovery_enabled: boolean
+  min_partial_amount: number
+  rail_priority: RecoveryRail[]
+  quiet_hours: string
+  escalation_dpd_threshold: number
+  legal_dpd_threshold: number
+  at_risk_amount_threshold: number
+  easypay_trigger_after_failures: number
+}
+
+export const recoveryTodayStats = {
+  attempted: 12432,
+  successful: 8920,
+  failed: 3512,
+  successRate: 71.7,
+  successRateTarget: 75.0,
+  trend: -2.3,
+  alertActive: true,
+}
+
+export const railPerformance = [
+  { rail: "NDD" as RecoveryRail, successRate: 82, target: 80, attempted: 7200, successful: 5904, status: "good" as const },
+  { rail: "REMITA" as RecoveryRail, successRate: 68, target: 75, attempted: 3800, successful: 2584, status: "warning" as const },
+  { rail: "EASY_PAY" as RecoveryRail, successRate: 55, target: 70, attempted: 1432, successful: 788, status: "critical" as const },
+]
+
+export const actionQueueCounts = {
+  failedRecoveries: 540,
+  mandateIssues: 320,
+  disputes: 23,
+  reconciliationExceptions: 45,
+  collectionsCases: 120,
+  pendingApprovals: 11,
+}
+
+export const liveIncidents: Incident[] = [
+  { id: "INC-001", timestamp: "2025-05-24T10:45:00Z", type: "LATENCY", severity: "WARNING", rail: "NDD", bank: "GTBank", message: "NDD latency spike detected — GTBank avg response 4.2s (threshold: 2s)", resolved: false },
+  { id: "INC-002", timestamp: "2025-05-24T10:49:00Z", type: "FAILURE_RATE", severity: "CRITICAL", rail: "EASY_PAY", message: "EasyPay failure rate exceeded 40% in last 15 minutes — 88 failed of 218 attempts", resolved: false },
+  { id: "INC-003", timestamp: "2025-05-24T10:52:00Z", type: "DUPLICATE", severity: "CRITICAL", message: "Duplicate debit detected — Loan LN-41023 (Aisha Mohammed) debited twice in 4 minutes", resolved: false },
+  { id: "INC-004", timestamp: "2025-05-24T09:30:00Z", type: "THRESHOLD_BREACH", severity: "WARNING", message: "Overall success rate fell below 75% target — currently at 71.7%", resolved: false },
+  { id: "INC-005", timestamp: "2025-05-24T08:15:00Z", type: "OUTAGE", severity: "CRITICAL", rail: "REMITA", bank: "Zenith Bank", message: "Remita API timeout for Zenith Bank — 12-minute outage, 47 transactions queued", resolved: true },
+]
+
+export const failedRecoveries: FailedRecovery[] = [
+  {
+    id: "FR-001", loanId: "LN-28471", borrower: "Emeka Okafor", phone: "+234 802 345 6789",
+    amount: 487500, failureReason: "INSUFFICIENT_FUNDS", lastAttempt: "2025-05-24T09:15:00Z",
+    attempts: 2, maxAttempts: 5, assignedTo: "Fatima Bello", rail: "NDD", status: "OPEN",
+    recommendations: [
+      { action: "Retry via EasyPay in 12h", reason: "NDD failed twice — EasyPay has higher success for this bank", confidence: "HIGH" },
+      { action: "Check Account #2 (First Bank)", reason: "Alternate account shows higher inbound score (0.74)", confidence: "MEDIUM" },
+    ],
+  },
+  {
+    id: "FR-002", loanId: "LN-19302", borrower: "Ngozi Adeyemi", phone: "+234 803 456 7890",
+    amount: 1050000, failureReason: "ACCOUNT_DORMANT", lastAttempt: "2025-05-22T14:30:00Z",
+    attempts: 4, maxAttempts: 5, assignedTo: null, rail: "REMITA", status: "OPEN",
+    recommendations: [
+      { action: "Remove dormant account — trigger iGree for new account", reason: "Account has been dormant for 45+ days", confidence: "HIGH" },
+      { action: "Escalate to TIER_3 — contact borrower directly", reason: "4 failed attempts, high balance", confidence: "HIGH" },
+    ],
+  },
+  {
+    id: "FR-003", loanId: "LN-62891", borrower: "Babatunde Adekoya", phone: "+234 808 901 2345",
+    amount: 450000, failureReason: "MANDATE_EXPIRED", lastAttempt: "2025-05-24T08:00:00Z",
+    attempts: 1, maxAttempts: 5, assignedTo: null, rail: "NDD", status: "OPEN",
+    recommendations: [
+      { action: "Setup new mandate — iGree consent not obtained", reason: "Original mandate expired, no replacement", confidence: "HIGH" },
+      { action: "Skip — send reminder SMS first", reason: "Low DPD (14 days), borrower may self-pay", confidence: "MEDIUM" },
+    ],
+  },
+  {
+    id: "FR-004", loanId: "LN-78134", borrower: "Kemi Olusanya", phone: "+234 809 012 3456",
+    amount: 750000, failureReason: "DAILY_LIMIT_EXCEEDED", lastAttempt: "2025-05-24T07:30:00Z",
+    attempts: 5, maxAttempts: 5, assignedTo: "Yusuf Ibrahim", rail: "NDD", status: "OPEN",
+    recommendations: [
+      { action: "Max retries reached — write-off or legal", reason: "5 failures on NDD, account limit restriction", confidence: "HIGH" },
+    ],
+  },
+  {
+    id: "FR-005", loanId: "LN-89456", borrower: "Segun Adewale", phone: "+234 810 123 4567",
+    amount: 1800000, failureReason: "BANK_TIMEOUT", lastAttempt: "2025-05-24T10:50:00Z",
+    attempts: 2, maxAttempts: 5, assignedTo: "Fatima Bello", rail: "REMITA", status: "IN_PROGRESS",
+    recommendations: [
+      { action: "Retry in 2h — bank timeout, likely transient", reason: "Remita API had 12-min outage, Zenith Bank affected", confidence: "HIGH" },
+    ],
+  },
+]
+
+export const reconciliationExceptions: ReconciliationException[] = [
+  { id: "REC-001", transactionId: "TX-2025052401", loanId: "LN-33812", borrower: "Tunde Fashola", amount: 162500, internalStatus: "SUCCESS", bankStatus: "UNKNOWN", exceptionType: "STATUS_MISMATCH", createdAt: "2025-05-24T11:05:00Z", assignedTo: null, rail: "NDD" },
+  { id: "REC-002", transactionId: "TX-2025052402", loanId: "LN-41023", borrower: "Aisha Mohammed", amount: 800000, internalStatus: "SUCCESS", bankStatus: "CONFIRMED", exceptionType: "DUPLICATE_DEBIT", createdAt: "2025-05-24T10:52:00Z", assignedTo: "Kunle Adesanya", rail: "NDD" },
+  { id: "REC-003", transactionId: "TX-2025052201", loanId: "LN-89456", borrower: "Segun Adewale", amount: 200000, internalStatus: "SUCCESS", bankStatus: "REJECTED", exceptionType: "STATUS_MISMATCH", createdAt: "2025-05-22T16:30:00Z", assignedTo: null, rail: "REMITA" },
+  { id: "REC-004", transactionId: "TX-2025052101", loanId: "LN-28471", borrower: "Emeka Okafor", amount: 75000, internalStatus: "PENDING", bankStatus: "UNKNOWN", exceptionType: "MISSING_CREDIT", createdAt: "2025-05-21T09:00:00Z", assignedTo: null, rail: "NDD" },
+  { id: "REC-005", transactionId: "TX-2025052002", loanId: "LN-19302", borrower: "Ngozi Adeyemi", amount: 1050000, internalStatus: "SUCCESS", bankStatus: "CONFIRMED", exceptionType: "AMOUNT_MISMATCH", createdAt: "2025-05-20T14:00:00Z", assignedTo: "Kunle Adesanya", rail: "REMITA" },
+]
+
+export const obligations: Obligation[] = [
+  { id: "OBL-001", loanId: "LN-28471", dueDate: "2024-11-01", amount: 162500, status: "OVERDUE", paidAmount: 0 },
+  { id: "OBL-002", loanId: "LN-28471", dueDate: "2024-12-01", amount: 162500, status: "OVERDUE", paidAmount: 0 },
+  { id: "OBL-003", loanId: "LN-28471", dueDate: "2025-01-01", amount: 162500, status: "PENDING" },
+  { id: "OBL-004", loanId: "LN-19302", dueDate: "2024-10-15", amount: 400000, status: "OVERDUE", paidAmount: 150000 },
+  { id: "OBL-005", loanId: "LN-19302", dueDate: "2024-11-15", amount: 400000, status: "OVERDUE", paidAmount: 0 },
+  { id: "OBL-006", loanId: "LN-19302", dueDate: "2024-12-15", amount: 400000, status: "PENDING" },
+  { id: "OBL-007", loanId: "LN-33812", dueDate: "2024-12-01", amount: 87500, status: "PAID", paidAmount: 87500, paidAt: "2025-05-23T11:05:00Z" },
+  { id: "OBL-008", loanId: "LN-33812", dueDate: "2025-01-01", amount: 87500, status: "PARTIAL", paidAmount: 42500 },
+  { id: "OBL-009", loanId: "LN-33812", dueDate: "2025-02-01", amount: 87500, status: "PENDING" },
+]
+
+export const borrowerAccounts: BorrowerAccount[] = [
+  { id: "ACC-001", loanId: "LN-28471", bank: "Access Bank", accountNumber: "0123456789", mandateStatus: "ACTIVE", inboundScore: 0.71, lastKnownBalance: 38500, lastChecked: "2025-05-24T06:00:00Z", isPrimary: true },
+  { id: "ACC-002", loanId: "LN-28471", bank: "First Bank", accountNumber: "3045678901", mandateStatus: null, inboundScore: 0.74, lastKnownBalance: 91200, lastChecked: "2025-05-24T06:00:00Z", isPrimary: false },
+  { id: "ACC-003", loanId: "LN-19302", bank: "GTBank", accountNumber: "0987654321", mandateStatus: "ACTIVE", inboundScore: 0.12, lastKnownBalance: 2100, lastChecked: "2025-05-22T06:00:00Z", isPrimary: true },
+  { id: "ACC-004", loanId: "LN-19302", bank: "Zenith Bank", accountNumber: "2198765432", mandateStatus: "FAILED", inboundScore: null, lastKnownBalance: null, lastChecked: null, isPrimary: false },
+  { id: "ACC-005", loanId: "LN-33812", bank: "Zenith Bank", accountNumber: "0246813579", mandateStatus: "ACTIVE", inboundScore: 0.88, lastKnownBalance: 124000, lastChecked: "2025-05-23T06:00:00Z", isPrimary: true },
+]
+
+export const policyConfig: PolicyConfig = {
+  retry_intervals: [24, 72, 168],
+  max_attempts: 5,
+  partial_recovery_enabled: true,
+  min_partial_amount: 1000,
+  rail_priority: ["NDD", "EASY_PAY", "REMITA"],
+  quiet_hours: "22:00-06:00",
+  escalation_dpd_threshold: 30,
+  legal_dpd_threshold: 180,
+  at_risk_amount_threshold: 500000,
+  easypay_trigger_after_failures: 2,
+}

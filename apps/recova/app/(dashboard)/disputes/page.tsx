@@ -1,29 +1,23 @@
 "use client"
 
 import { useState } from "react"
-import { AlertTriangle, Clock, CheckCircle2, XCircle, Search } from "lucide-react"
+import { AlertTriangle, Clock, CheckCircle2, Search } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { disputes } from "@/lib/mock-data"
+import { DisputeDetailDrawer } from "@/components/recovery/dispute-detail-drawer"
+import { disputes as initialDisputes, type Dispute } from "@/lib/mock-data"
 import { formatCurrency, formatDate, formatRelativeTime, getSLAStatus } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 
 const STATUS_STYLE: Record<string, string> = {
   OPEN: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   INVESTIGATING: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  ESCALATED: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   RESOLVED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   REJECTED: "bg-red-500/10 text-red-600 dark:text-red-400",
-  ESCALATED: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-}
-
-const SLA_STYLE: Record<string, string> = {
-  safe: "text-emerald-600 dark:text-emerald-400",
-  warning: "text-amber-600 dark:text-amber-400",
-  urgent: "text-orange-600 dark:text-orange-400",
-  breached: "text-red-600 dark:text-red-400",
+  CLOSED: "bg-muted text-muted-foreground",
 }
 
 const SLA_BADGE: Record<string, string> = {
@@ -33,18 +27,32 @@ const SLA_BADGE: Record<string, string> = {
   breached: "bg-red-500/10 text-red-600 dark:text-red-400",
 }
 
-const statusCounts = disputes.reduce<Record<string, number>>((acc, d) => {
-  acc[d.status] = (acc[d.status] || 0) + 1
-  return acc
-}, {})
+const SLA_TEXT: Record<string, string> = {
+  safe: "text-emerald-600 dark:text-emerald-400",
+  warning: "text-amber-600 dark:text-amber-400",
+  urgent: "text-orange-600 dark:text-orange-400",
+  breached: "text-red-600 dark:text-red-400",
+}
 
 export default function DisputesPage() {
+  const [allDisputes, setAllDisputes] = useState<Dispute[]>(initialDisputes)
   const [search, setSearch] = useState("")
+  const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const filtered = disputes.filter(d => {
+  const filtered = allDisputes.filter(d => {
     const q = search.toLowerCase()
     return !q || d.borrower.toLowerCase().includes(q) || d.loanId.toLowerCase().includes(q) || d.type.toLowerCase().includes(q)
   })
+
+  const statusCounts = allDisputes.reduce<Record<string, number>>((acc, d) => {
+    acc[d.status] = (acc[d.status] || 0) + 1
+    return acc
+  }, {})
+
+  function handleStatusChange(id: string, status: Dispute["status"]) {
+    setAllDisputes(ds => ds.map(d => d.id === id ? { ...d, status } : d))
+  }
 
   return (
     <div className="flex flex-col">
@@ -52,7 +60,7 @@ export default function DisputesPage() {
         title="Disputes"
         description="Manage borrower disputes and SLA deadlines"
         actions={
-          <Button size="sm" className="gap-2 text-xs">
+          <Button size="sm" className="gap-2 text-xs" onClick={() => { setSelectedDispute(null); setDrawerOpen(true) }}>
             <AlertTriangle className="h-3.5 w-3.5" />
             Flag Dispute
           </Button>
@@ -94,6 +102,7 @@ export default function DisputesPage() {
                 className="pl-9 h-8 text-xs"
               />
             </div>
+            <span className="text-xs text-muted-foreground ml-auto">Click a row to investigate</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -111,9 +120,16 @@ export default function DisputesPage() {
                 {filtered.map(dispute => {
                   const sla = getSLAStatus(dispute.slaDeadline)
                   return (
-                    <tr key={dispute.id} className="hover:bg-muted/40 transition-colors cursor-pointer">
+                    <tr
+                      key={dispute.id}
+                      onClick={() => { setSelectedDispute(dispute); setDrawerOpen(true) }}
+                      className="hover:bg-muted/40 transition-colors cursor-pointer"
+                    >
                       <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-foreground">{dispute.borrower}</span>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{dispute.borrower}</p>
+                          <p className="text-[11px] text-muted-foreground">{dispute.phone}</p>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-mono text-muted-foreground">{dispute.loanId}</span>
@@ -130,7 +146,7 @@ export default function DisputesPage() {
                         <span className="text-xs text-muted-foreground">{formatRelativeTime(dispute.filedAt)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={cn("text-xs font-medium", SLA_STYLE[sla])}>
+                        <span className={cn("text-xs font-medium", SLA_TEXT[sla])}>
                           {formatDate(dispute.slaDeadline)}
                         </span>
                       </td>
@@ -159,6 +175,13 @@ export default function DisputesPage() {
           </div>
         </div>
       </div>
+
+      <DisputeDetailDrawer
+        dispute={selectedDispute}
+        open={drawerOpen && !!selectedDispute}
+        onClose={() => setDrawerOpen(false)}
+        onStatusChange={handleStatusChange}
+      />
     </div>
   )
 }
