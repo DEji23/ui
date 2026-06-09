@@ -31,6 +31,7 @@ import {
   Calendar,
   Routing,
   ReceiptEdit,
+  Key,
 } from "iconsax-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -108,6 +109,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "User Management", href: "/users", icon: ProfileCircle },
       { label: "Maker-Checker", href: "/maker-checker", icon: TickSquare },
+      { label: "RBAC & Workflow", href: "/rbac", icon: Key },
       { label: "Audit & Compliance", href: "/audit", icon: Eye },
       { label: "API & Webhooks", href: "/api-webhooks", icon: Code },
       { label: "System Health", href: "/system-health", icon: StatusUp },
