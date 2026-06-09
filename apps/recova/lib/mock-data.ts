@@ -951,7 +951,7 @@ export const apiKeys: ApiKey[] = [
   },
 ]
 
-// ─── Operations Command Center Data ──────────────────────────────────────────────────
+// ─── Operations Command Center Data ───────────────────────────────────────────
 
 export interface Incident {
   id: string
@@ -1149,7 +1149,7 @@ export const policyConfig: PolicyConfig = {
   easypay_trigger_after_failures: 2,
 }
 
-// ─── Risk & Recovery Decision Engine ──────────────────────────────────────────────
+// ─── Risk & Recovery Decision Engine ──────────────────────────────────────────
 
 export interface AccountFeatures {
   avgMonthlyInflow: number
@@ -1559,4 +1559,210 @@ export const recoveryEvents: RecoveryEvent[] = [
     amount: null,
     detail: "48h suspension lifted. Account re-enabled for recovery.",
   },
+]
+
+// ─── Loan Management & Repayment Scheduler ──────────────────────────────────
+
+export type ObligationStatus = "PENDING" | "DUE" | "PARTIALLY_PAID" | "PAID" | "DEFAULTED" | "OVERDUE" | "RESTRUCTURED"
+export type AmortizationType = "FLAT" | "DECLINING_BALANCE" | "BULLET"
+
+export interface RepaymentObligation {
+  id: string
+  loanId: string
+  borrower: string
+  period: number
+  dueDate: string
+  principalComponent: number
+  interestComponent: number
+  penaltyComponent: number
+  totalDue: number
+  outstandingAmount: number
+  paidAmount: number
+  paidAt: string | null
+  status: ObligationStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface LoanScheduleSummary {
+  loanId: string
+  borrower: string
+  principal: number
+  interestRate: number
+  tenureMonths: number
+  amortizationType: AmortizationType
+  disbursementDate: string
+  totalRepayable: number
+  totalPaid: number
+}
+
+export interface PenaltyRecord {
+  id: string
+  loanId: string
+  borrower: string
+  obligationId: string
+  type: "PERCENTAGE" | "FLAT"
+  value: number
+  amount: number
+  appliedAt: string
+  status: "APPLIED" | "PAID" | "WAIVED"
+}
+
+export interface SchedulerKPIs {
+  obligationAccuracy: number
+  paymentAllocationErrors: number
+  penaltyCorrectness: number
+  totalObligations: number
+  paidObligations: number
+  overdueObligations: number
+  totalOutstanding: number
+}
+
+export const schedulerKPIs: SchedulerKPIs = {
+  obligationAccuracy: 99.8,
+  paymentAllocationErrors: 3,
+  penaltyCorrectness: 100,
+  totalObligations: 24,
+  paidObligations: 7,
+  overdueObligations: 9,
+  totalOutstanding: 5337500,
+}
+
+export const loanScheduleSummaries: LoanScheduleSummary[] = [
+  { loanId: "LN-28471", borrower: "Emeka Okafor", principal: 500000, interestRate: 24, tenureMonths: 3, amortizationType: "FLAT", disbursementDate: "2024-10-01", totalRepayable: 530000, totalPaid: 12500 },
+  { loanId: "LN-19302", borrower: "Ngozi Adeyemi", principal: 1200000, interestRate: 30, tenureMonths: 4, amortizationType: "DECLINING_BALANCE", disbursementDate: "2024-09-15", totalRepayable: 1290000, totalPaid: 190000 },
+  { loanId: "LN-33812", borrower: "Tunde Fashola", principal: 250000, interestRate: 18, tenureMonths: 3, amortizationType: "FLAT", disbursementDate: "2024-11-01", totalRepayable: 261250, totalPaid: 111250 },
+  { loanId: "LN-89456", borrower: "Segun Adewale", principal: 2000000, interestRate: 24, tenureMonths: 5, amortizationType: "DECLINING_BALANCE", disbursementDate: "2024-10-05", totalRepayable: 2250000, totalPaid: 400000 },
+]
+
+export const repaymentObligations: RepaymentObligation[] = [
+  { id: "OBL-D001", loanId: "LN-28471", borrower: "Emeka Okafor", period: 1, dueDate: "2024-11-01", principalComponent: 166667, interestComponent: 10000, penaltyComponent: 8750, totalDue: 176667, outstandingAmount: 185417, paidAmount: 0, paidAt: null, status: "DEFAULTED", createdAt: "2024-10-01T00:00:00Z", updatedAt: "2025-05-24T00:00:00Z" },
+  { id: "OBL-D002", loanId: "LN-28471", borrower: "Emeka Okafor", period: 2, dueDate: "2024-12-01", principalComponent: 166667, interestComponent: 10000, penaltyComponent: 5000, totalDue: 176667, outstandingAmount: 181667, paidAmount: 0, paidAt: null, status: "DEFAULTED", createdAt: "2024-10-01T00:00:00Z", updatedAt: "2025-05-24T00:00:00Z" },
+  { id: "OBL-D003", loanId: "LN-28471", borrower: "Emeka Okafor", period: 3, dueDate: "2025-01-01", principalComponent: 166666, interestComponent: 10000, penaltyComponent: 0, totalDue: 176666, outstandingAmount: 164166, paidAmount: 12500, paidAt: "2024-12-15T09:00:00Z", status: "PARTIALLY_PAID", createdAt: "2024-10-01T00:00:00Z", updatedAt: "2024-12-15T09:00:00Z" },
+  { id: "OBL-D004", loanId: "LN-19302", borrower: "Ngozi Adeyemi", period: 1, dueDate: "2024-10-15", principalComponent: 280000, interestComponent: 30000, penaltyComponent: 15000, totalDue: 310000, outstandingAmount: 325000, paidAmount: 0, paidAt: null, status: "DEFAULTED", createdAt: "2024-09-15T00:00:00Z", updatedAt: "2025-05-22T00:00:00Z" },
+  { id: "OBL-D005", loanId: "LN-19302", borrower: "Ngozi Adeyemi", period: 2, dueDate: "2024-11-15", principalComponent: 287000, interestComponent: 23000, penaltyComponent: 10000, totalDue: 310000, outstandingAmount: 320000, paidAmount: 0, paidAt: null, status: "DEFAULTED", createdAt: "2024-09-15T00:00:00Z", updatedAt: "2025-05-22T00:00:00Z" },
+  { id: "OBL-D006", loanId: "LN-19302", borrower: "Ngozi Adeyemi", period: 3, dueDate: "2024-12-15", principalComponent: 294500, interestComponent: 15500, penaltyComponent: 0, totalDue: 310000, outstandingAmount: 310000, paidAmount: 0, paidAt: null, status: "OVERDUE", createdAt: "2024-09-15T00:00:00Z", updatedAt: "2025-05-22T00:00:00Z" },
+  { id: "OBL-D007", loanId: "LN-19302", borrower: "Ngozi Adeyemi", period: 4, dueDate: "2025-01-15", principalComponent: 338500, interestComponent: 7500, penaltyComponent: 0, totalDue: 346000, outstandingAmount: 95000, paidAmount: 190000, paidAt: "2025-01-10T14:00:00Z", status: "PARTIALLY_PAID", createdAt: "2024-09-15T00:00:00Z", updatedAt: "2025-01-10T14:00:00Z" },
+  { id: "OBL-D008", loanId: "LN-33812", borrower: "Tunde Fashola", period: 1, dueDate: "2024-12-01", principalComponent: 83333, interestComponent: 3750, penaltyComponent: 0, totalDue: 87083, outstandingAmount: 0, paidAmount: 87083, paidAt: "2024-11-28T11:00:00Z", status: "PAID", createdAt: "2024-11-01T00:00:00Z", updatedAt: "2024-11-28T11:00:00Z" },
+  { id: "OBL-D009", loanId: "LN-33812", borrower: "Tunde Fashola", period: 2, dueDate: "2025-01-01", principalComponent: 83333, interestComponent: 3750, penaltyComponent: 0, totalDue: 87083, outstandingAmount: 62500, paidAmount: 24583, paidAt: "2025-01-05T11:00:00Z", status: "PARTIALLY_PAID", createdAt: "2024-11-01T00:00:00Z", updatedAt: "2025-01-05T11:00:00Z" },
+  { id: "OBL-D010", loanId: "LN-33812", borrower: "Tunde Fashola", period: 3, dueDate: "2025-02-01", principalComponent: 83334, interestComponent: 3750, penaltyComponent: 0, totalDue: 87084, outstandingAmount: 87084, paidAmount: 0, paidAt: null, status: "DUE", createdAt: "2024-11-01T00:00:00Z", updatedAt: "2025-02-01T00:00:00Z" },
+  { id: "OBL-D011", loanId: "LN-89456", borrower: "Segun Adewale", period: 1, dueDate: "2024-11-05", principalComponent: 360000, interestComponent: 40000, penaltyComponent: 0, totalDue: 400000, outstandingAmount: 0, paidAmount: 400000, paidAt: "2024-11-03T10:00:00Z", status: "PAID", createdAt: "2024-10-05T00:00:00Z", updatedAt: "2024-11-03T10:00:00Z" },
+  { id: "OBL-D012", loanId: "LN-89456", borrower: "Segun Adewale", period: 2, dueDate: "2024-12-05", principalComponent: 367200, interestComponent: 32800, penaltyComponent: 20000, totalDue: 400000, outstandingAmount: 420000, paidAmount: 0, paidAt: null, status: "DEFAULTED", createdAt: "2024-10-05T00:00:00Z", updatedAt: "2025-05-24T00:00:00Z" },
+  { id: "OBL-D013", loanId: "LN-89456", borrower: "Segun Adewale", period: 3, dueDate: "2025-01-05", principalComponent: 374544, interestComponent: 25456, penaltyComponent: 0, totalDue: 400000, outstandingAmount: 400000, paidAmount: 0, paidAt: null, status: "DEFAULTED", createdAt: "2024-10-05T00:00:00Z", updatedAt: "2025-05-24T00:00:00Z" },
+  { id: "OBL-D014", loanId: "LN-89456", borrower: "Segun Adewale", period: 4, dueDate: "2025-02-05", principalComponent: 382035, interestComponent: 17965, penaltyComponent: 0, totalDue: 400000, outstandingAmount: 400000, paidAmount: 0, paidAt: null, status: "OVERDUE", createdAt: "2024-10-05T00:00:00Z", updatedAt: "2025-05-24T00:00:00Z" },
+  { id: "OBL-D015", loanId: "LN-89456", borrower: "Segun Adewale", period: 5, dueDate: "2025-03-05", principalComponent: 389676, interestComponent: 10324, penaltyComponent: 0, totalDue: 400000, outstandingAmount: 400000, paidAmount: 0, paidAt: null, status: "OVERDUE", createdAt: "2024-10-05T00:00:00Z", updatedAt: "2025-05-24T00:00:00Z" },
+]
+
+export const penaltyRecords: PenaltyRecord[] = [
+  { id: "PNL-001", loanId: "LN-28471", borrower: "Emeka Okafor", obligationId: "OBL-D001", type: "PERCENTAGE", value: 5, amount: 8750, appliedAt: "2024-11-15T00:00:00Z", status: "APPLIED" },
+  { id: "PNL-002", loanId: "LN-28471", borrower: "Emeka Okafor", obligationId: "OBL-D002", type: "PERCENTAGE", value: 3, amount: 5000, appliedAt: "2024-12-15T00:00:00Z", status: "APPLIED" },
+  { id: "PNL-003", loanId: "LN-19302", borrower: "Ngozi Adeyemi", obligationId: "OBL-D004", type: "PERCENTAGE", value: 5, amount: 15000, appliedAt: "2024-10-29T00:00:00Z", status: "APPLIED" },
+  { id: "PNL-004", loanId: "LN-19302", borrower: "Ngozi Adeyemi", obligationId: "OBL-D005", type: "PERCENTAGE", value: 3, amount: 10000, appliedAt: "2024-11-29T00:00:00Z", status: "APPLIED" },
+  { id: "PNL-005", loanId: "LN-89456", borrower: "Segun Adewale", obligationId: "OBL-D012", type: "PERCENTAGE", value: 5, amount: 20000, appliedAt: "2024-12-19T00:00:00Z", status: "WAIVED" },
+]
+
+// ─── Recovery Orchestration Engine ─────────────────────────────────────────
+
+export type RecoveryTaskState = "PENDING" | "IN_PROGRESS" | "RETRY_PENDING" | "SUCCESS" | "PARTIAL" | "FAILED" | "PAUSED" | "ESCALATED"
+export type FailureReasonCode = "INSUFFICIENT_FUNDS" | "NO_MANDATE" | "MANDATE_REVOKED" | "BANK_TIMEOUT" | "DO_NOT_HONOR" | "ACCOUNT_CLOSED" | "SYSTEM_ERROR"
+
+export interface RecoveryTask {
+  id: string
+  loanId: string
+  borrower: string
+  amountDue: number
+  outstandingBalance: number
+  dpd: number
+  state: RecoveryTaskState
+  retryCount: number
+  maxRetries: number
+  nextRetryAt: string | null
+  lastAttemptAt: string | null
+  lastFailureReason: FailureReasonCode | null
+  selectedAccount: string | null
+  selectedRail: RecoveryRail | null
+  debitAmount: number | null
+  policyId: string
+  guardRailBlocked: boolean
+  guardRailReason: string | null
+  createdAt: string
+}
+
+export interface AccountProfile {
+  id: string
+  loanId: string
+  accountNumber: string
+  bankCode: string
+  bank: string
+  mandateStatus: "ACTIVE" | "FAILED" | "NONE"
+  lastBalance: number | null
+  lastDebitResult: "SUCCESS" | "FAILED" | "NONE"
+  inflowScore: number
+  lastCreditAt: string | null
+  riskScore: number
+  rankScore: number
+  isSelected: boolean
+}
+
+export interface OrchestrationKPIs {
+  meanRecoveryPerLoan: number
+  debitSuccessPerAttempt: number
+  retryYieldRate: number
+  costPerRecoveredNaira: number
+  activeTasksToday: number
+  successfulToday: number
+  pendingRetries: number
+  escalatedToday: number
+}
+
+export type OrchestratorEventType = "DEBIT_INITIATED" | "DEBIT_SUCCESS" | "DEBIT_FAILED" | "PARTIAL_RECOVERY" | "RETRY_SCHEDULED" | "ESCALATION_TRIGGERED"
+
+export interface OrchestratorEvent {
+  id: string
+  type: OrchestratorEventType
+  loanId: string
+  borrower: string
+  timestamp: string
+  amount: number | null
+  detail: string
+  retryLevel: number | null
+}
+
+export const orchestrationKPIs: OrchestrationKPIs = {
+  meanRecoveryPerLoan: 1247000,
+  debitSuccessPerAttempt: 71.4,
+  retryYieldRate: 34.2,
+  costPerRecoveredNaira: 0.0012,
+  activeTasksToday: 1247,
+  successfulToday: 891,
+  pendingRetries: 134,
+  escalatedToday: 23,
+}
+
+export const recoveryTasks: RecoveryTask[] = [
+  { id: "TASK-001", loanId: "LN-28471", borrower: "Emeka Okafor", amountDue: 487500, outstandingBalance: 487500, dpd: 23, state: "RETRY_PENDING", retryCount: 2, maxRetries: 5, nextRetryAt: "2025-05-27T09:00:00Z", lastAttemptAt: "2025-05-24T09:15:00Z", lastFailureReason: "INSUFFICIENT_FUNDS", selectedAccount: "0123456789", selectedRail: "NDD", debitAmount: 487500, policyId: "POL-001", guardRailBlocked: false, guardRailReason: null, createdAt: "2025-05-01T00:00:00Z" },
+  { id: "TASK-002", loanId: "LN-19302", borrower: "Ngozi Adeyemi", amountDue: 525000, outstandingBalance: 1050000, dpd: 40, state: "FAILED", retryCount: 4, maxRetries: 5, nextRetryAt: null, lastAttemptAt: "2025-05-22T14:30:00Z", lastFailureReason: "ACCOUNT_CLOSED", selectedAccount: "0987654321", selectedRail: "REMITA", debitAmount: 525000, policyId: "POL-001", guardRailBlocked: false, guardRailReason: null, createdAt: "2025-05-01T00:00:00Z" },
+  { id: "TASK-003", loanId: "LN-78134", borrower: "Kemi Olusanya", amountDue: 375000, outstandingBalance: 750000, dpd: 55, state: "RETRY_PENDING", retryCount: 3, maxRetries: 5, nextRetryAt: "2025-05-31T08:00:00Z", lastAttemptAt: "2025-05-24T07:30:00Z", lastFailureReason: "INSUFFICIENT_FUNDS", selectedAccount: "0579124680", selectedRail: "EASY_PAY", debitAmount: 375000, policyId: "POL-001", guardRailBlocked: false, guardRailReason: null, createdAt: "2025-04-15T00:00:00Z" },
+  { id: "TASK-004", loanId: "LN-89456", borrower: "Segun Adewale", amountDue: 450000, outstandingBalance: 1800000, dpd: 19, state: "IN_PROGRESS", retryCount: 2, maxRetries: 5, nextRetryAt: null, lastAttemptAt: "2025-05-24T10:50:00Z", lastFailureReason: "BANK_TIMEOUT", selectedAccount: "0680235791", selectedRail: "REMITA", debitAmount: 450000, policyId: "POL-001", guardRailBlocked: false, guardRailReason: null, createdAt: "2025-05-01T00:00:00Z" },
+  { id: "TASK-005", loanId: "LN-62891", borrower: "Babatunde Adekoya", amountDue: 450000, outstandingBalance: 450000, dpd: 14, state: "PENDING", retryCount: 0, maxRetries: 5, nextRetryAt: "2025-05-25T09:00:00Z", lastAttemptAt: null, lastFailureReason: "NO_MANDATE", selectedAccount: null, selectedRail: null, debitAmount: null, policyId: "POL-001", guardRailBlocked: false, guardRailReason: null, createdAt: "2025-05-20T00:00:00Z" },
+  { id: "TASK-006", loanId: "LN-33812", borrower: "Tunde Fashola", amountDue: 87500, outstandingBalance: 87500, dpd: 5, state: "PAUSED", retryCount: 0, maxRetries: 5, nextRetryAt: null, lastAttemptAt: null, lastFailureReason: null, selectedAccount: null, selectedRail: null, debitAmount: null, policyId: "POL-001", guardRailBlocked: true, guardRailReason: "DISPUTE_OPEN", createdAt: "2025-05-23T00:00:00Z" },
+]
+
+export const accountProfiles: AccountProfile[] = [
+  { id: "AP-001", loanId: "LN-28471", accountNumber: "0123456789", bankCode: "044", bank: "Access Bank", mandateStatus: "ACTIVE", lastBalance: 38500, lastDebitResult: "FAILED", inflowScore: 0.71, lastCreditAt: "2025-05-24T17:45:00Z", riskScore: 0.28, rankScore: 0.74, isSelected: true },
+  { id: "AP-002", loanId: "LN-28471", accountNumber: "3045678901", bankCode: "011", bank: "First Bank", mandateStatus: "NONE", lastBalance: 91200, lastDebitResult: "NONE", inflowScore: 0.74, lastCreditAt: "2025-05-20T09:00:00Z", riskScore: 0.22, rankScore: 0.68, isSelected: false },
+  { id: "AP-003", loanId: "LN-19302", accountNumber: "0987654321", bankCode: "058", bank: "GTBank", mandateStatus: "ACTIVE", lastBalance: 2100, lastDebitResult: "FAILED", inflowScore: 0.12, lastCreditAt: "2025-04-30T00:00:00Z", riskScore: 0.71, rankScore: 0.18, isSelected: true },
+  { id: "AP-004", loanId: "LN-89456", accountNumber: "0680235791", bankCode: "076", bank: "Polaris Bank", mandateStatus: "ACTIVE", lastBalance: 520000, lastDebitResult: "SUCCESS", inflowScore: 0.81, lastCreditAt: "2025-05-25T13:55:00Z", riskScore: 0.19, rankScore: 0.83, isSelected: true },
+  { id: "AP-005", loanId: "LN-78134", accountNumber: "0579124680", bankCode: "070", bank: "Fidelity Bank", mandateStatus: "FAILED", lastBalance: 12000, lastDebitResult: "FAILED", inflowScore: 0.18, lastCreditAt: "2025-05-01T00:00:00Z", riskScore: 0.82, rankScore: 0.14, isSelected: true },
+]
+
+export const orchestratorEvents: OrchestratorEvent[] = [
+  { id: "OEVT-001", type: "DEBIT_INITIATED", loanId: "LN-89456", borrower: "Segun Adewale", timestamp: "2025-05-25T14:00:00Z", amount: 450000, detail: "REMITA debit initiated via Polaris Bank mandate.", retryLevel: 2 },
+  { id: "OEVT-002", type: "DEBIT_SUCCESS", loanId: "LN-89456", borrower: "Segun Adewale", timestamp: "2025-05-25T14:02:00Z", amount: 450000, detail: "Debit confirmed. Outstanding balance reduced by ₦450,000.", retryLevel: 2 },
+  { id: "OEVT-003", type: "DEBIT_FAILED", loanId: "LN-28471", borrower: "Emeka Okafor", timestamp: "2025-05-24T09:15:00Z", amount: 487500, detail: "NDD debit failed — insufficient funds. Retry #2 scheduled in 72h.", retryLevel: 2 },
+  { id: "OEVT-004", type: "RETRY_SCHEDULED", loanId: "LN-28471", borrower: "Emeka Okafor", timestamp: "2025-05-24T09:16:00Z", amount: null, detail: "Next retry at 2025-05-27T09:00Z. Strategy: top-3 accounts only.", retryLevel: 2 },
+  { id: "OEVT-005", type: "DEBIT_FAILED", loanId: "LN-19302", borrower: "Ngozi Adeyemi", timestamp: "2025-05-22T14:30:00Z", amount: 525000, detail: "REMITA debit failed — account closed. No fallback available.", retryLevel: 4 },
+  { id: "OEVT-006", type: "ESCALATION_TRIGGERED", loanId: "LN-19302", borrower: "Ngozi Adeyemi", timestamp: "2025-05-22T14:31:00Z", amount: null, detail: "Retry limit nearing. Task escalated to DRO queue for manual intervention.", retryLevel: 4 },
+  { id: "OEVT-007", type: "PARTIAL_RECOVERY", loanId: "LN-33812", borrower: "Tunde Fashola", timestamp: "2025-05-23T11:05:00Z", amount: 24583, detail: "Partial debit of ₦24,583 applied. Outstanding reduced to ₦62,500.", retryLevel: 1 },
+  { id: "OEVT-008", type: "DEBIT_FAILED", loanId: "LN-89456", borrower: "Segun Adewale", timestamp: "2025-05-24T10:50:00Z", amount: 450000, detail: "REMITA API timeout — Zenith Bank outage. Retrying when bank recovers.", retryLevel: 2 },
 ]
