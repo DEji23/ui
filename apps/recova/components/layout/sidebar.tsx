@@ -27,7 +27,7 @@ import {
   Setting,
   Moon,
   Sun,
-  ReceiptEdit,
+  Cpu,
 } from "iconsax-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -66,6 +66,7 @@ const navSections: NavSection[] = [
       { label: "Loan Cases", href: "/loan-cases", icon: DocumentText },
       { label: "Collections", href: "/collections", icon: People },
       { label: "Legal Review", href: "/legal-review", icon: Judge },
+      { label: "Decision Engine", href: "/decision-engine", icon: Cpu },
     ],
   },
   {
@@ -87,7 +88,6 @@ const navSections: NavSection[] = [
     items: [
       { label: "Settlements", href: "/settlements", icon: Moneys },
       { label: "Disputes", href: "/disputes", icon: MessageQuestion },
-      { label: "Reconciliation", href: "/reconciliation", icon: ReceiptEdit },
     ],
   },
   {
