@@ -52,7 +52,7 @@ export default function RecoveryQueuePage() {
       list = list.filter(l =>
         l.borrower.toLowerCase().includes(q) ||
         l.loanId.toLowerCase().includes(q) ||
-        l.dro.toLowerCase().includes(q)
+        (l.dro ?? "").toLowerCase().includes(q)
       )
     }
     return list
@@ -212,7 +212,7 @@ export default function RecoveryQueuePage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-foreground">{loan.dro.split(" ")[0]}</span>
+                        <span className="text-xs text-foreground">{loan.dro?.split(" ")[0] ?? "—"}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">

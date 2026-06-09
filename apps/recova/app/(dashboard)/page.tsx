@@ -219,7 +219,7 @@ export default function DashboardPage() {
                       >
                         <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                           {!inc.resolved && <span className={cn("h-1.5 w-1.5 rounded-full", s.dot)} />}
-                          {inc.icon ?? s.icon}
+                          {s.icon}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-foreground leading-snug">{inc.message}</p>

@@ -30,7 +30,7 @@ const TABS = [
   { key: "failed", label: "Failed Recoveries", count: initialFR.length },
   { key: "mandates", label: "Mandate Issues", count: mandates.filter(m => m.status === "FAILED" || m.status === "EXPIRED").length },
   { key: "recon", label: "Recon Exceptions", count: initialRecon.length },
-  { key: "disputes", label: "Dispute Queue", count: initialDisputes.filter(d => d.status === "OPEN" || d.status === "INVESTIGATING").length },
+  { key: "disputes", label: "Dispute Queue", count: initialDisputes.filter(d => d.status === "OPEN" || d.status === "EVIDENCE_COMPILED" || d.status === "DECISION_PENDING").length },
 ] as const
 type TabKey = typeof TABS[number]["key"]
 
@@ -65,7 +65,7 @@ const EXCEPTION_STYLE: Record<string, string> = {
   MISSING_CREDIT: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
 }
 
-// ── Intervention Modal ─────────────────────────────────────────────────────────
+// ── Intervention Modal ────────────────────────────────────────────────────────────────────────────────
 interface InterventionModalProps {
   open: boolean
   onClose: () => void
@@ -115,7 +115,7 @@ function InterventionModal({ open, onClose, title, body, onConfirm, confirmLabel
   )
 }
 
-// ── Failed Recovery Queue ──────────────────────────────────────────────────────
+// ── Failed Recovery Queue ──────────────────────────────────────────────────────────────────────────────────────
 function FailedRecoveryQueue() {
   const [items, setItems] = useState<FailedRecovery[]>(initialFR)
   const [search, setSearch] = useState("")
@@ -263,7 +263,7 @@ function FailedRecoveryQueue() {
   )
 }
 
-// ── Mandate Issues Queue ───────────────────────────────────────────────────────
+// ── Mandate Issues Queue ───────────────────────────────────────────────────────────────────────────────────────
 function MandateIssueQueue() {
   const issues = mandates.filter(m => m.status === "FAILED" || m.status === "EXPIRED")
 
@@ -306,7 +306,7 @@ function MandateIssueQueue() {
   )
 }
 
-// ── Reconciliation Exception Queue ─────────────────────────────────────────────
+// ── Reconciliation Exception Queue ─────────────────────────────────────────────────────────────────────────────────────
 function ReconQueue() {
   const [items, setItems] = useState<ReconciliationException[]>(initialRecon)
   const open = items.filter(i => !i.assignedTo || true) // show all
@@ -360,9 +360,9 @@ function ReconQueue() {
   )
 }
 
-// ── Dispute Queue ──────────────────────────────────────────────────────────────
+// ── Dispute Queue ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 function DisputeQueue() {
-  const active = initialDisputes.filter(d => d.status === "OPEN" || d.status === "INVESTIGATING")
+  const active = initialDisputes.filter(d => d.status === "OPEN" || d.status === "EVIDENCE_COMPILED" || d.status === "DECISION_PENDING")
   return (
     <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
       {active.map(d => (
@@ -398,7 +398,7 @@ function DisputeQueue() {
   )
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 export default function ActionQueuesPage() {
   const params = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabKey>((params.get("tab") as TabKey) ?? "failed")

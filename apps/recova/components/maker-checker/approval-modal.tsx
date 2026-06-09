@@ -43,14 +43,14 @@ export function ApprovalModal({ request, open, onClose, onApprove, onReject }: A
   const expiresIn = Math.max(0, Math.ceil((new Date(request.expiresAt).getTime() - Date.now()) / 86400000))
 
   function handleApprove() {
-    onApprove(request.id)
+    onApprove(request!.id)
     toast.success("Request approved successfully")
     onClose()
   }
 
   function handleReject() {
     if (!reason.trim()) { toast.error("Please provide a rejection reason"); return }
-    onReject(request.id, reason.trim())
+    onReject(request!.id, reason.trim())
     toast.success("Request rejected")
     onClose()
   }
