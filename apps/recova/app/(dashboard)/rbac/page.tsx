@@ -11,10 +11,12 @@ import {
   workflowOwnership,
   assignmentRules,
   approvalPolicies,
+  segmentationRules,
   type UserRole,
   type AllocationStrategy,
+  type SegmentDimension,
 } from "@/lib/rbac-data"
-import { TickCircle, Warning2, ArrowRight } from "iconsax-react"
+import { TickCircle, Warning2, ArrowRight, Filter } from "iconsax-react"
 
 const ROLE_COLORS: Record<UserRole, string> = {
   SUPER_ADMIN:  "bg-red-500/10 text-red-700 border-red-500/20",
@@ -31,6 +33,12 @@ const STRATEGY_CONFIG: Record<AllocationStrategy, { label: string; className: st
   LOAD_BALANCED: { label: "Load Balanced", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
   SKILL_BASED:   { label: "Skill Based",   className: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
   MANUAL:        { label: "Manual",        className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+}
+
+const SEGMENT_CONFIG: Record<SegmentDimension, { label: string; className: string }> = {
+  LOAN_SIZE:    { label: "Loan Size",    className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  RISK_LEVEL:   { label: "Risk Level",   className: "bg-red-500/10 text-red-600 border-red-500/20" },
+  PRODUCT_TYPE: { label: "Product Type", className: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
 }
 
 const EDGE_CASES = [
@@ -56,6 +64,8 @@ const EDGE_CASES = [
 
 export default function RBACPage() {
   const totalUsers = roleDefinitions.reduce((a, r) => a + r.userCount, 0)
+  const baseRules = assignmentRules.filter((r) => !r.segment)
+  const segmentedRules = assignmentRules.filter((r) => !!r.segment)
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -117,6 +127,7 @@ export default function RBACPage() {
               <TabsTrigger value="matrix">Permission Matrix</TabsTrigger>
               <TabsTrigger value="workflow">Workflow Ownership</TabsTrigger>
               <TabsTrigger value="assignment">Assignment Rules</TabsTrigger>
+              <TabsTrigger value="segmentation">Segmentation</TabsTrigger>
               <TabsTrigger value="approvals">Approval Policies</TabsTrigger>
               <TabsTrigger value="edge-cases">Edge Cases</TabsTrigger>
             </TabsList>
@@ -252,7 +263,7 @@ export default function RBACPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {assignmentRules.map((rule, i) => (
+                    {baseRules.map((rule, i) => (
                       <tr key={rule.id} className={cn("border-b border-border last:border-0 hover:bg-muted/20", i % 2 ? "bg-muted/10" : "")}>
                         <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{rule.id}</td>
                         <td className="px-3 py-2">
@@ -282,6 +293,91 @@ export default function RBACPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </TabsContent>
+
+            {/* Segmentation */}
+            <TabsContent value="segmentation">
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border p-4 bg-muted/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Filter size={14} className="text-muted-foreground" />
+                    <p className="text-sm font-semibold text-foreground">Segmentation Layer</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Super Admin can segment assignment routing by loan size, risk level, and product type.
+                    Segmented rules override base ROUND_ROBIN assignment when conditions are met.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {segmentationRules.map((seg) => (
+                    <div key={seg.id} className="rounded-lg border border-border p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{seg.dimensionLabel}</p>
+                          <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{seg.id}</p>
+                        </div>
+                        <Badge variant="outline" className={cn("text-[10px] shrink-0", SEGMENT_CONFIG[seg.dimension].className)}>
+                          {SEGMENT_CONFIG[seg.dimension].label}
+                        </Badge>
+                      </div>
+                      <div className="rounded bg-muted/50 px-2.5 py-1.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Condition</p>
+                        <p className="font-mono text-xs text-foreground">{seg.condition}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">Routes to</span>
+                        <Badge variant="outline" className={cn("text-[10px]", ROLE_COLORS[seg.role])}>{seg.roleLabel}</Badge>
+                        <Badge variant="outline" className={cn("text-[10px]", STRATEGY_CONFIG.SKILL_BASED.className)}>Skill Based</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">{seg.description}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-border bg-muted/40">
+                    <p className="text-xs font-semibold text-foreground">Segmented Assignment Rules (derived)</p>
+                  </div>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/20">
+                        {["ID", "Trigger", "Segment", "Condition", "Role", "Strategy"].map((h) => (
+                          <th key={h} className="px-3 py-2 text-left font-semibold text-muted-foreground">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {segmentedRules.map((rule, i) => (
+                        <tr key={rule.id} className={cn("border-b border-border last:border-0 hover:bg-muted/20", i % 2 ? "bg-muted/10" : "")}>
+                          <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{rule.id}</td>
+                          <td className="px-3 py-2">
+                            <p className="font-medium text-foreground">{rule.triggerLabel}</p>
+                          </td>
+                          <td className="px-3 py-2">
+                            {rule.segment && (
+                              <Badge variant="outline" className={cn("text-[10px]", SEGMENT_CONFIG[rule.segment].className)}>
+                                {SEGMENT_CONFIG[rule.segment].label}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">{rule.conditions ?? "—"}</td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className={cn("text-[10px]", ROLE_COLORS[rule.role])}>
+                              {roleDefinitions.find(r => r.role === rule.role)?.label ?? rule.role}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className={cn("text-[10px]", STRATEGY_CONFIG[rule.allocationStrategy].className)}>
+                              {STRATEGY_CONFIG[rule.allocationStrategy].label}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </TabsContent>
 

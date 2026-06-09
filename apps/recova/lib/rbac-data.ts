@@ -19,6 +19,8 @@ export type WorkflowState =
   | "ACTIVE" | "DUE" | "IN_RECOVERY" | "PARTIALLY_RECOVERED"
   | "AT_RISK" | "LEGAL_REVIEW" | "DISPUTE_OPEN" | "CLOSED_PAID"
 
+export type SegmentDimension = "LOAN_SIZE" | "RISK_LEVEL" | "PRODUCT_TYPE"
+
 export interface RoleDefinition {
   role: UserRole
   label: string
@@ -48,6 +50,7 @@ export interface AssignmentRule {
   allocationStrategy: AllocationStrategy
   conditions: string | null
   active: boolean
+  segment?: SegmentDimension
 }
 
 export interface ApprovalPolicy {
@@ -58,6 +61,16 @@ export interface ApprovalPolicy {
   requiredApprovers: UserRole[]
   description: string
   active: boolean
+}
+
+export interface SegmentationRule {
+  id: string
+  dimension: SegmentDimension
+  dimensionLabel: string
+  condition: string
+  role: UserRole
+  roleLabel: string
+  description: string
 }
 
 export interface RBACKPIs {
@@ -112,11 +125,11 @@ export const permissionGroups: PermissionGroup[] = [
   {
     category: "C. Financial Actions",
     permissions: [
-      { key: "refund.initiate",      label: "Initiate Refund",      description: "Create refund request" },
-      { key: "refund.approve",       label: "Approve Refund",       description: "Approve refund" },
-      { key: "refund.execute",       label: "Execute Refund",       description: "Trigger refund payment" },
-      { key: "ledger.view",          label: "View Ledger",          description: "Read ledger entries" },
-      { key: "reconciliation.run",   label: "Run Reconciliation",   description: "Execute reconciliation" },
+      { key: "refund.initiate",    label: "Initiate Refund",    description: "Create refund request" },
+      { key: "refund.approve",     label: "Approve Refund",     description: "Approve refund" },
+      { key: "refund.execute",     label: "Execute Refund",     description: "Trigger refund payment" },
+      { key: "ledger.view",        label: "View Ledger",        description: "Read ledger entries" },
+      { key: "reconciliation.run", label: "Run Reconciliation", description: "Execute reconciliation" },
     ],
   },
   {
@@ -140,10 +153,10 @@ export const permissionGroups: PermissionGroup[] = [
   {
     category: "F. System Configuration",
     permissions: [
-      { key: "role.create",       label: "Create Role",        description: "Create custom roles" },
-      { key: "role.assign",       label: "Assign Role",        description: "Assign roles to users" },
-      { key: "policy.configure",  label: "Configure Policy",   description: "Configure recovery rules" },
-      { key: "webhook.configure", label: "Manage Webhooks",    description: "Configure webhooks" },
+      { key: "role.create",       label: "Create Role",      description: "Create custom roles" },
+      { key: "role.assign",       label: "Assign Role",      description: "Assign roles to users" },
+      { key: "policy.configure",  label: "Configure Policy", description: "Configure recovery rules" },
+      { key: "webhook.configure", label: "Manage Webhooks",  description: "Configure webhooks" },
     ],
   },
   {
@@ -193,7 +206,7 @@ export const roleDefinitions: RoleDefinition[] = [
     role: "FINANCE_OPS",
     label: "Finance / Ops",
     description: "Handles settlements and reconciliation",
-    permissions: ["refund.approve", "refund.execute", "ledger.view", "reconciliation.run", "dispute.review", "report.view", "report.export"],
+    permissions: ["refund.initiate", "refund.approve", "refund.execute", "ledger.view", "reconciliation.run", "dispute.review", "report.view", "report.export"],
     cannotDo: ["Initiate recovery", "Access mandate setup"],
     userCount: 5,
   },
@@ -216,29 +229,59 @@ export const roleDefinitions: RoleDefinition[] = [
 ]
 
 export const workflowOwnership: WorkflowOwnership[] = [
-  { state: "ACTIVE",               stateLabel: "Active",               ownerRole: null,          ownerLabel: "None" },
-  { state: "DUE",                  stateLabel: "Due",                  ownerRole: null,          ownerLabel: "System" },
-  { state: "IN_RECOVERY",          stateLabel: "In Recovery",          ownerRole: "DRO",         ownerLabel: "DRO" },
-  { state: "PARTIALLY_RECOVERED",  stateLabel: "Partially Recovered",  ownerRole: "DRO",         ownerLabel: "DRO" },
-  { state: "AT_RISK",              stateLabel: "At Risk",              ownerRole: "DRM",         ownerLabel: "DRM" },
-  { state: "LEGAL_REVIEW",         stateLabel: "Legal Review",         ownerRole: "LEGAL",       ownerLabel: "Legal" },
-  { state: "DISPUTE_OPEN",         stateLabel: "Dispute Open",         ownerRole: "FINANCE_OPS", ownerLabel: "Finance / Ops" },
-  { state: "CLOSED_PAID",          stateLabel: "Closed / Paid",        ownerRole: "FINANCE_OPS", ownerLabel: "Finance / Ops" },
+  { state: "ACTIVE",              stateLabel: "Active",              ownerRole: null,          ownerLabel: "None" },
+  { state: "DUE",                 stateLabel: "Due",                 ownerRole: null,          ownerLabel: "System" },
+  { state: "IN_RECOVERY",         stateLabel: "In Recovery",         ownerRole: "DRO",         ownerLabel: "DRO" },
+  { state: "PARTIALLY_RECOVERED", stateLabel: "Partially Recovered", ownerRole: "DRO",         ownerLabel: "DRO" },
+  { state: "AT_RISK",             stateLabel: "At Risk",             ownerRole: "DRM",         ownerLabel: "DRM" },
+  { state: "LEGAL_REVIEW",        stateLabel: "Legal Review",        ownerRole: "LEGAL",       ownerLabel: "Legal" },
+  { state: "DISPUTE_OPEN",        stateLabel: "Dispute Open",        ownerRole: "FINANCE_OPS", ownerLabel: "Finance / Ops" },
+  { state: "CLOSED_PAID",         stateLabel: "Closed / Paid",       ownerRole: "FINANCE_OPS", ownerLabel: "Finance / Ops" },
 ]
 
 export const assignmentRules: AssignmentRule[] = [
-  { id: "RULE-001", triggerEvent: "loan.enter_recovery",   triggerLabel: "Loan enters recovery",       role: "DRO",         allocationStrategy: "ROUND_ROBIN",   conditions: null,             active: true },
-  { id: "RULE-002", triggerEvent: "loan.escalated_tier_2", triggerLabel: "Loan escalated to Tier 2",   role: "DRM",         allocationStrategy: "LOAD_BALANCED", conditions: "dpd > 30",       active: true },
-  { id: "RULE-003", triggerEvent: "loan.legal_review",     triggerLabel: "Loan sent to legal review",  role: "LEGAL",       allocationStrategy: "MANUAL",        conditions: "dpd > 180",      active: true },
-  { id: "RULE-004", triggerEvent: "dispute.opened",        triggerLabel: "Dispute opened",             role: "FINANCE_OPS", allocationStrategy: "ROUND_ROBIN",   conditions: null,             active: true },
-  { id: "RULE-005", triggerEvent: "loan.at_risk",          triggerLabel: "Loan flagged at risk",       role: "DRM",         allocationStrategy: "SKILL_BASED",  conditions: "outstanding > 500000", active: true },
-  { id: "RULE-006", triggerEvent: "mandate.failed",        triggerLabel: "Mandate setup failed",       role: "DRO",         allocationStrategy: "LOAD_BALANCED", conditions: null,             active: false },
+  { id: "RULE-001", triggerEvent: "loan.enter_recovery",   triggerLabel: "Loan enters recovery",        role: "DRO",         allocationStrategy: "ROUND_ROBIN",   conditions: null,                         active: true },
+  { id: "RULE-002", triggerEvent: "loan.escalated_tier_2", triggerLabel: "Loan escalated to Tier 2",    role: "DRM",         allocationStrategy: "LOAD_BALANCED", conditions: "dpd > 30",                   active: true },
+  { id: "RULE-003", triggerEvent: "loan.legal_review",     triggerLabel: "Loan sent to legal review",   role: "LEGAL",       allocationStrategy: "MANUAL",        conditions: "dpd > 180",                  active: true },
+  { id: "RULE-004", triggerEvent: "dispute.opened",        triggerLabel: "Dispute opened",              role: "FINANCE_OPS", allocationStrategy: "ROUND_ROBIN",   conditions: null,                         active: true },
+  { id: "RULE-005", triggerEvent: "loan.at_risk",          triggerLabel: "Loan flagged at risk",        role: "DRM",         allocationStrategy: "SKILL_BASED",   conditions: "outstanding > 500000",       active: true },
+  { id: "RULE-006", triggerEvent: "mandate.failed",        triggerLabel: "Mandate setup failed",        role: "DRO",         allocationStrategy: "LOAD_BALANCED", conditions: null,                         active: false },
+  { id: "RULE-007", triggerEvent: "loan.enter_recovery",   triggerLabel: "High-value loan (≥ ₦1M)",     role: "DRM",         allocationStrategy: "SKILL_BASED",   conditions: "outstanding >= 1000000",     active: true,  segment: "LOAN_SIZE" },
+  { id: "RULE-008", triggerEvent: "loan.at_risk",          triggerLabel: "High-risk borrower",          role: "DRM",         allocationStrategy: "SKILL_BASED",   conditions: "risk_score > 0.7",           active: true,  segment: "RISK_LEVEL" },
+  { id: "RULE-009", triggerEvent: "loan.enter_recovery",   triggerLabel: "SME product segment",         role: "DRM",         allocationStrategy: "SKILL_BASED",   conditions: "product_type == 'SME'",      active: true,  segment: "PRODUCT_TYPE" },
 ]
 
 export const approvalPolicies: ApprovalPolicy[] = [
-  { id: "APL-001", action: "refund.execute",    actionLabel: "Execute Refund",          threshold: 50000,  requiredApprovers: ["FINANCE_OPS", "ADMIN"],             description: "Refunds above ₦50,000 require Finance + Admin approval",    active: true },
-  { id: "APL-002", action: "recovery.override", actionLabel: "Recovery Policy Override", threshold: null,   requiredApprovers: ["DRM", "ADMIN"],                    description: "Any policy override requires DRM and Admin sign-off",       active: true },
-  { id: "APL-003", action: "write_off",         actionLabel: "Loan Write-Off",           threshold: 500000, requiredApprovers: ["DRM", "ADMIN", "FINANCE_OPS"],     description: "Write-offs above ₦500K require 3-level approval",            active: true },
-  { id: "APL-004", action: "legal.escalate",    actionLabel: "Legal Escalation",        threshold: null,   requiredApprovers: ["DRM"],                             description: "Legal escalations require DRM approval",                    active: true },
-  { id: "APL-005", action: "mandate.cancel",    actionLabel: "Mandate Cancellation",    threshold: null,   requiredApprovers: ["DRM"],                             description: "Mandate cancellations require manager sign-off",            active: true },
+  { id: "APL-001", action: "refund.execute",    actionLabel: "Execute Refund",           threshold: 50000,  requiredApprovers: ["FINANCE_OPS", "ADMIN"],          description: "Refunds above ₦50,000 require Finance + Admin approval",    active: true },
+  { id: "APL-002", action: "recovery.override", actionLabel: "Recovery Policy Override", threshold: null,   requiredApprovers: ["DRM", "ADMIN"],                  description: "Any policy override requires DRM and Admin sign-off",       active: true },
+  { id: "APL-003", action: "write_off",         actionLabel: "Loan Write-Off",           threshold: 500000, requiredApprovers: ["DRM", "ADMIN", "FINANCE_OPS"],   description: "Write-offs above ₦500K require 3-level approval",            active: true },
+  { id: "APL-004", action: "legal.escalate",    actionLabel: "Legal Escalation",         threshold: null,   requiredApprovers: ["DRM"],                          description: "Legal escalations require DRM approval",                    active: true },
+  { id: "APL-005", action: "mandate.cancel",    actionLabel: "Mandate Cancellation",     threshold: null,   requiredApprovers: ["DRM"],                          description: "Mandate cancellations require manager sign-off",            active: true },
+]
+
+export const segmentationRules: SegmentationRule[] = [
+  {
+    id: "SEG-001", dimension: "LOAN_SIZE", dimensionLabel: "Loan Size",
+    condition: "outstanding ≥ ₦1,000,000",
+    role: "DRM", roleLabel: "Senior DRM",
+    description: "High-value loans (≥ ₦1M outstanding) are routed to a senior DRM via skill-based matching.",
+  },
+  {
+    id: "SEG-002", dimension: "RISK_LEVEL", dimensionLabel: "Risk Level",
+    condition: "risk_score > 0.70",
+    role: "DRM", roleLabel: "Risk Specialist DRM",
+    description: "Borrowers with risk scores above 0.7 are assigned to DRMs with high-risk expertise.",
+  },
+  {
+    id: "SEG-003", dimension: "PRODUCT_TYPE", dimensionLabel: "Product Type",
+    condition: "product_type == 'SME'",
+    role: "DRM", roleLabel: "SME Specialist DRM",
+    description: "SME product loans are routed to DRMs specialised in business lending recovery.",
+  },
+  {
+    id: "SEG-004", dimension: "PRODUCT_TYPE", dimensionLabel: "Product Type",
+    condition: "product_type == 'RETAIL'",
+    role: "DRO", roleLabel: "DRO (Retail)",
+    description: "Standard retail loans follow the default ROUND_ROBIN DRO assignment.",
+  },
 ]
