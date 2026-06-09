@@ -27,6 +27,7 @@ import {
   Setting,
   Moon,
   Sun,
+  ReceiptEdit,
 } from "iconsax-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -86,6 +87,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Settlements", href: "/settlements", icon: Moneys },
       { label: "Disputes", href: "/disputes", icon: MessageQuestion },
+      { label: "Reconciliation", href: "/reconciliation", icon: ReceiptEdit },
     ],
   },
   {
