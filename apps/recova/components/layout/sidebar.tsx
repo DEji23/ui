@@ -28,6 +28,7 @@ import {
   Moon,
   Sun,
   Cpu,
+  Calendar,
 } from "iconsax-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
@@ -64,6 +65,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Recovery Queue", href: "/recovery-queue", icon: TaskSquare },
       { label: "Loan Cases", href: "/loan-cases", icon: DocumentText },
+      { label: "Repayment Scheduler", href: "/repayment-scheduler", icon: Calendar },
       { label: "Collections", href: "/collections", icon: People },
       { label: "Legal Review", href: "/legal-review", icon: Judge },
       { label: "Decision Engine", href: "/decision-engine", icon: Cpu },
