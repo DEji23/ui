@@ -1,4 +1,4 @@
-import { UserPlus, Shield } from "lucide-react"
+﻿import { UserPlus, Shield } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -38,7 +38,7 @@ export default function UsersPage() {
         }
       />
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px]">

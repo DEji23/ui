@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { Settings2, Plus, Save, RotateCcw, AlertTriangle, CheckCircle2, Clock } from "lucide-react"
@@ -148,7 +148,7 @@ export default function PolicyEnginePage() {
         }
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <div className="grid lg:grid-cols-2 gap-6">
 
           {/* Left: Parameters */}

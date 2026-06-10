@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { Plus, Search, Download, RefreshCcw } from "lucide-react"
@@ -57,7 +57,7 @@ export default function MandatesPage() {
         }
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
         {/* KPI summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[

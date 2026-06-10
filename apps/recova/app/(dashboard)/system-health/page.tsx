@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, AlertTriangle, Clock, Server } from "lucide-react"
+﻿import { Activity, CheckCircle2, AlertTriangle, Clock, Server } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -31,9 +31,9 @@ export default function SystemHealthPage() {
         description="Real-time monitoring of all integration services"
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
         {/* Status summary */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20">
             <CardContent className="p-4 flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />

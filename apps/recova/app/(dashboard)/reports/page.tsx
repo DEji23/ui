@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { Download, FileText, Calendar, Filter, BarChart2, Table, FileSpreadsheet } from "lucide-react"
@@ -123,7 +123,7 @@ export default function ReportsPage() {
         description="Generate and export compliance and operational reports"
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Report selector */}
           <div className="lg:col-span-2 space-y-3">

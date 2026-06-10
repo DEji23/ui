@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { Clock, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
@@ -58,9 +58,9 @@ export default function MakerCheckerPage() {
         description="Review and approve pending requests"
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
         {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: "Pending Approval", value: requests.filter(r => r.status === "PENDING").length, color: "text-amber-500", icon: <Clock className="h-4 w-4" /> },
             { label: "Approved (30d)", value: requests.filter(r => r.status === "APPROVED").length, color: "text-emerald-500", icon: <CheckCircle2 className="h-4 w-4" /> },

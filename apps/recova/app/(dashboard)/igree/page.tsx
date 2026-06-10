@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { Link, Copy, RefreshCcw, CheckCircle2, XCircle, Clock, AlertTriangle, Send } from "lucide-react"
@@ -59,7 +59,7 @@ export default function IgreePage() {
         description="Manage borrower direct debit consent via iGree platform"
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
         {/* Status summary */}
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {(["NOT_SENT", "LINK_SENT", "OPENED", "CONSENTED", "DECLINED", "EXPIRED"] as IgreeCase["consentStatus"][]).map(s => {

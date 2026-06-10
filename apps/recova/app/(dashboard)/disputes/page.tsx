@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import {
@@ -124,7 +124,7 @@ export default function DisputesPage() {
         }
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
 
         {/* KPI bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

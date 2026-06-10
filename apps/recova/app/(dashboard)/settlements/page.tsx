@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { Download, Search, CheckCircle2, Clock, XCircle, RefreshCcw } from "lucide-react"
@@ -43,7 +43,7 @@ export default function SettlementsPage() {
         }
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { AlertTriangle, TrendingDown, TrendingUp, ArrowRight, Zap, RefreshCcw, XCircle, CheckCircle2, Clock } from "lucide-react"
@@ -67,7 +67,7 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
 
         {/* Row 1 — Recovery Health + Rail Performance */}
         <div className="grid lg:grid-cols-3 gap-4">

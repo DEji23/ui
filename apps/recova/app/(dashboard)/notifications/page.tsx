@@ -1,4 +1,4 @@
-import { Bell, CheckCheck, AlertTriangle, Info, CheckCircle2 } from "lucide-react"
+﻿import { Bell, CheckCheck, AlertTriangle, Info, CheckCircle2 } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -37,7 +37,7 @@ export default function NotificationsPage() {
         }
       />
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="rounded-xl border border-border bg-card overflow-hidden divide-y divide-border">
           {notifications.map(notif => {
             const style = TYPE_STYLE[notif.type]

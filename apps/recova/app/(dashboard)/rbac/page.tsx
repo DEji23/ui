@@ -83,7 +83,7 @@ export default function RBACPage() {
 
       <div className="flex-1 overflow-y-auto">
         {/* KPI Bar */}
-        <div className="grid grid-cols-4 gap-3 p-4 border-b border-border">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 border-b border-border">
           <div className="rounded-lg border border-border bg-card p-3">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Unauthorized Attempts</p>
             <p className={cn("mt-1 text-2xl font-bold tabular-nums", rbacKPIs.unauthorizedAttempts === 0 ? "text-emerald-600" : "text-red-600")}>

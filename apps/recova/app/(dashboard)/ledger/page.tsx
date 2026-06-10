@@ -98,7 +98,7 @@ export default function LedgerPage() {
 
       <div className="flex-1 overflow-y-auto">
         {/* KPI Bar */}
-        <div className="grid grid-cols-4 gap-3 p-4 border-b border-border">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 border-b border-border">
           <div className="rounded-lg border border-border bg-card p-3">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Reconciliation Accuracy</p>
             <p className={cn("mt-1 text-2xl font-bold tabular-nums", ledgerKPIs.reconciliationAccuracy >= 99.9 ? "text-emerald-600" : "text-amber-600")}>
@@ -153,7 +153,7 @@ export default function LedgerPage() {
         </div>
 
         {/* Stats Strip */}
-        <div className="grid grid-cols-5 divide-x divide-border border-b border-border">
+        <div className="grid grid-cols-3 sm:grid-cols-5 divide-x divide-border border-b border-border overflow-x-auto">
           {([
             { label: "Entries Today",    value: ledgerKPIs.totalEntriesToday.toLocaleString(), color: "" },
             { label: "Matched",          value: ledgerKPIs.matchedToday.toLocaleString(),       color: "text-emerald-600" },

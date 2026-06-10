@@ -1,4 +1,4 @@
-import { Gavel, FileText, Plus } from "lucide-react"
+﻿import { Gavel, FileText, Plus } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,8 +23,8 @@ export default function LegalReviewPage() {
         }
       />
 
-      <div className="p-6 space-y-5">
-        <div className="grid grid-cols-3 gap-4">
+      <div className="p-4 sm:p-6 space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: "In Legal Review", value: legalLoans.length, color: "text-purple-500" },
             { label: "Total Exposure", value: formatCurrency(legalLoans.reduce((a, l) => a + l.outstanding, 0)), color: "text-red-500" },

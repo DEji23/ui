@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -367,7 +367,7 @@ export default function DecisionEnginePage() {
         </div>
       </div>
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
         {/* KPI bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Recovery per attempt */}

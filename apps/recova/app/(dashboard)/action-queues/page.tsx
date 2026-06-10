@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
@@ -417,7 +417,7 @@ export default function ActionQueuesPage() {
         description={`${totalOpen} items requiring intervention`}
       />
 
-      <div className="flex-1 overflow-auto p-6 space-y-4">
+      <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4">
         {/* Tab bar */}
         <div className="flex border-b border-border gap-0 overflow-x-auto no-scrollbar">
           {TABS.map(tab => (

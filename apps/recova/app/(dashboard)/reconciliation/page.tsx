@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import {
@@ -406,7 +406,7 @@ export default function ReconciliationPage() {
         }
       />
 
-      <div className="p-6 space-y-5">
+      <div className="p-4 sm:p-6 space-y-5">
 
         {/* KPI bar */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -472,7 +472,7 @@ export default function ReconciliationPage() {
         </div>
 
         {/* Classification summary strip */}
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {(Object.entries(CLASS_CONFIG) as [ReconClassification, typeof CLASS_CONFIG[ReconClassification]][]).map(([k, cfg]) => (
             <button
               key={k}

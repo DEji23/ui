@@ -1,4 +1,4 @@
-import { Download, Zap } from "lucide-react"
+﻿import { Download, Zap } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,7 +41,7 @@ export default function CollectionsPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         {/* Rail performance */}
         <div className="grid sm:grid-cols-3 gap-4">
           {Object.entries(byRail).map(([rail, data]) => {
