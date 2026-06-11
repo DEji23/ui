@@ -46,19 +46,49 @@ export interface Loan {
   updatedAt: string
 }
 
+export type DisputeStatus =
+  | "OPEN"
+  | "EVIDENCE_COMPILED"
+  | "DECISION_PENDING"
+  | "VALID_DEBIT"
+  | "PARTIAL_REFUND"
+  | "FULL_REFUND"
+  | "ESCALATED"
+  | "CLOSED"
+
+export type DisputeDecisionOutcome = "VALID_DEBIT" | "PARTIAL_ERROR" | "INVALID" | null
+
+export interface DisputeEvidence {
+  consentLog: { exists: boolean; signedAt: string | null; channel: string | null; reference: string | null; ipAddress: string | null }
+  mandateDetails: { reference: string | null; status: string | null; maxAmount: number | null; setupDate: string | null; bank: string | null; authMethod: string | null }
+  debitAttemptTrace: Array<{ reference: string; timestamp: string; channel: string; amount: number; status: string; bankResponse: string }>
+  notificationHistory: Array<{ channel: string; message: string; timestamp: string; status: string }>
+}
+
 export interface Dispute {
   id: string
   loanId: string
   borrower: string
   phone: string
-  type: "Incorrect Debit" | "Unauthorised Mandate" | "Duplicate Debit" | "Insufficient Notice" | "Fraud"
+  type: "Incorrect Debit" | "Unauthorised Mandate" | "Duplicate Debit" | "Insufficient Notice" | "Fraud" | "AT_RISK Transaction"
   amount: number
-  status: "OPEN" | "INVESTIGATING" | "ESCALATED" | "RESOLVED" | "REJECTED" | "CLOSED"
+  status: DisputeStatus
   slaDeadline: string
   assignedTo: string
   filedAt: string
   description: string
   rail: RecoveryRail
+  initiatedBy: "CUSTOMER" | "BANK"
+  transactionId: string
+  isIndemnity: boolean
+  indemnityAmount: number | null
+  recoveryPaused: boolean
+  mandateLocked: boolean
+  decisionOutcome: DisputeDecisionOutcome
+  decisionNote: string | null
+  decisionAt: string | null
+  decisionBy: string | null
+  evidence: DisputeEvidence
 }
 
 export interface Settlement {
@@ -74,6 +104,9 @@ export interface Settlement {
   settledAt: string
 }
 
+export type MandateValidationStatus = "NOT_STARTED" | "USER_ACTION_REQUIRED" | "VALIDATED" | "FAILED"
+export type MandateFailureReason = "ACCOUNT_DORMANT" | "INVALID_ACCOUNT" | "NAME_MISMATCH" | "BANK_REJECTION" | "USER_ABANDONED" | "TIMEOUT"
+
 export interface Mandate {
   id: string
   loanId: string
@@ -82,11 +115,18 @@ export interface Mandate {
   rail: RecoveryRail
   status: MandateStatus
   bank: string
+  bankCode: string
   accountNumber: string
   maxAmount: number
   frequency: "Monthly" | "Weekly" | "Daily"
   issuedAt: string
   expiryDate: string
+  validationStatus: MandateValidationStatus
+  lastCheckedAt: string | null
+  activatedAt?: string | null
+  externalReference?: string | null
+  providerFallback: boolean
+  failureReason?: MandateFailureReason
 }
 
 export interface DisputeNote {
@@ -419,6 +459,13 @@ export const loans: Loan[] = [
   },
 ]
 
+const emptyEvidence: DisputeEvidence = {
+  consentLog: { exists: false, signedAt: null, channel: null, reference: null, ipAddress: null },
+  mandateDetails: { reference: null, status: null, maxAmount: null, setupDate: null, bank: null, authMethod: null },
+  debitAttemptTrace: [],
+  notificationHistory: [],
+}
+
 export const disputes: Dispute[] = [
   {
     id: "DSP-001",
@@ -427,12 +474,27 @@ export const disputes: Dispute[] = [
     phone: "+234 806 789 0123",
     type: "Unauthorised Mandate",
     amount: 800000,
-    status: "INVESTIGATING",
+    status: "EVIDENCE_COMPILED",
     slaDeadline: "2025-05-28T00:00:00Z",
     assignedTo: "Adaora Nwosu",
     filedAt: "2025-05-21T09:00:00Z",
     description: "Borrower claims mandate was set up without consent.",
     rail: "NDD",
+    initiatedBy: "CUSTOMER",
+    transactionId: "TXN-NDD-41023-001",
+    isIndemnity: false,
+    indemnityAmount: null,
+    recoveryPaused: true,
+    mandateLocked: true,
+    decisionOutcome: null,
+    decisionNote: null,
+    decisionAt: null,
+    decisionBy: null,
+    evidence: {
+      ...emptyEvidence,
+      consentLog: { exists: true, signedAt: "2024-09-12T10:30:00Z", channel: "SMS", reference: "CGT-881234", ipAddress: "102.89.34.11" },
+      mandateDetails: { reference: "MND-881234", status: "ACTIVE", maxAmount: 900000, setupDate: "2024-09-12T10:00:00Z", bank: "Access Bank", authMethod: "OTP" },
+    },
   },
   {
     id: "DSP-002",
@@ -447,6 +509,17 @@ export const disputes: Dispute[] = [
     filedAt: "2025-05-24T11:00:00Z",
     description: "Two debits of equal amount on the same day.",
     rail: "NDD",
+    initiatedBy: "CUSTOMER",
+    transactionId: "TXN-NDD-28471-002",
+    isIndemnity: false,
+    indemnityAmount: null,
+    recoveryPaused: false,
+    mandateLocked: false,
+    decisionOutcome: null,
+    decisionNote: null,
+    decisionAt: null,
+    decisionBy: null,
+    evidence: emptyEvidence,
   },
   {
     id: "DSP-003",
@@ -461,6 +534,20 @@ export const disputes: Dispute[] = [
     filedAt: "2025-05-20T08:30:00Z",
     description: "Amount debited exceeds mandate cap.",
     rail: "REMITA",
+    initiatedBy: "BANK",
+    transactionId: "TXN-RMT-89456-003",
+    isIndemnity: true,
+    indemnityAmount: 1800000,
+    recoveryPaused: true,
+    mandateLocked: false,
+    decisionOutcome: null,
+    decisionNote: null,
+    decisionAt: null,
+    decisionBy: null,
+    evidence: {
+      ...emptyEvidence,
+      mandateDetails: { reference: "MND-334891", status: "SUSPENDED", maxAmount: 1200000, setupDate: "2024-08-15T00:00:00Z", bank: "GTBank", authMethod: "USSD" },
+    },
   },
   {
     id: "DSP-004",
@@ -475,8 +562,29 @@ export const disputes: Dispute[] = [
     filedAt: "2025-05-19T14:00:00Z",
     description: "Borrower alleges fraudulent loan disbursement.",
     rail: "EASY_PAY",
+    initiatedBy: "CUSTOMER",
+    transactionId: "TXN-EP-55247-004",
+    isIndemnity: false,
+    indemnityAmount: null,
+    recoveryPaused: false,
+    mandateLocked: false,
+    decisionOutcome: null,
+    decisionNote: null,
+    decisionAt: null,
+    decisionBy: null,
+    evidence: emptyEvidence,
   },
 ]
+
+export const disputeKPIs = {
+  disputeRate: 1.8,
+  disputeRateTarget: 2.0,
+  indemnityLossTotal: 4800000,
+  indemnityLossRate: 0.04,
+  slaCompliance: 91,
+  slaComplianceTarget: 95,
+  resolvedThisMonth: 12,
+}
 
 export const settlements: Settlement[] = [
   {
@@ -553,6 +661,15 @@ export const settlements: Settlement[] = [
   },
 ]
 
+export const bankCapabilities = [
+  { bankCode: "ACCESS", bankName: "Access Bank", supportsNDD: true, nddSuccessRate: 91, remitaSuccessRate: 88, preferredProvider: "NDD" as const },
+  { bankCode: "GTB", bankName: "GTBank", supportsNDD: true, nddSuccessRate: 94, remitaSuccessRate: 90, preferredProvider: "NDD" as const },
+  { bankCode: "UBA", bankName: "UBA", supportsNDD: false, nddSuccessRate: 0, remitaSuccessRate: 85, preferredProvider: "REMITA" as const },
+  { bankCode: "STANBIC", bankName: "Stanbic IBTC", supportsNDD: true, nddSuccessRate: 87, remitaSuccessRate: 83, preferredProvider: "NDD" as const },
+  { bankCode: "FIDELITY", bankName: "Fidelity Bank", supportsNDD: true, nddSuccessRate: 78, remitaSuccessRate: 80, preferredProvider: "REMITA" as const },
+  { bankCode: "ZENITH", bankName: "Zenith Bank", supportsNDD: true, nddSuccessRate: 93, remitaSuccessRate: 89, preferredProvider: "NDD" as const },
+]
+
 export const mandates: Mandate[] = [
   {
     id: "MND-001",
@@ -562,11 +679,15 @@ export const mandates: Mandate[] = [
     rail: "NDD",
     status: "ACTIVE",
     bank: "Access Bank",
+    bankCode: "ACCESS",
     accountNumber: "0123456789",
     maxAmount: 500000,
     frequency: "Monthly",
     issuedAt: "2024-10-01",
     expiryDate: "2025-10-01",
+    validationStatus: "VALIDATED",
+    lastCheckedAt: "2025-05-20T08:00:00Z",
+    providerFallback: false,
   },
   {
     id: "MND-002",
@@ -576,11 +697,15 @@ export const mandates: Mandate[] = [
     rail: "REMITA",
     status: "ACTIVE",
     bank: "GTBank",
+    bankCode: "GTB",
     accountNumber: "0987654321",
     maxAmount: 1200000,
     frequency: "Monthly",
     issuedAt: "2024-09-15",
     expiryDate: "2025-09-15",
+    validationStatus: "VALIDATED",
+    lastCheckedAt: "2025-05-19T14:00:00Z",
+    providerFallback: false,
   },
   {
     id: "MND-003",
@@ -590,11 +715,15 @@ export const mandates: Mandate[] = [
     rail: "EASY_PAY",
     status: "EXPIRED",
     bank: "UBA",
+    bankCode: "UBA",
     accountNumber: "0357924680",
     maxAmount: 3000000,
     frequency: "Monthly",
     issuedAt: "2024-08-15",
     expiryDate: "2025-02-15",
+    validationStatus: "NOT_STARTED",
+    lastCheckedAt: null,
+    providerFallback: false,
   },
   {
     id: "MND-004",
@@ -604,11 +733,15 @@ export const mandates: Mandate[] = [
     rail: "NDD",
     status: "PENDING",
     bank: "Stanbic IBTC",
+    bankCode: "STANBIC",
     accountNumber: "0468013579",
     maxAmount: 450000,
     frequency: "Monthly",
     issuedAt: "2025-05-20",
     expiryDate: "2026-05-20",
+    validationStatus: "USER_ACTION_REQUIRED",
+    lastCheckedAt: "2025-05-21T10:00:00Z",
+    providerFallback: false,
   },
   {
     id: "MND-005",
@@ -618,11 +751,134 @@ export const mandates: Mandate[] = [
     rail: "NDD",
     status: "FAILED",
     bank: "Fidelity Bank",
+    bankCode: "FIDELITY",
     accountNumber: "0579124680",
     maxAmount: 750000,
     frequency: "Monthly",
     issuedAt: "2024-09-01",
     expiryDate: "2025-09-01",
+    validationStatus: "FAILED",
+    lastCheckedAt: "2025-05-18T09:00:00Z",
+    providerFallback: true,
+    failureReason: "ACCOUNT_DORMANT",
+  },
+]
+
+export const mandateKPIs = {
+  activationRate: 84,
+  activationRateTarget: 90,
+  silentFailuresDetected: 3,
+  totalFailed: 5,
+  avgTimeToActiveHours: 6.2,
+  avgTimeToActiveTarget: 8,
+  refreshedThisMonth: 14,
+  fallbackAccountRate: 12,
+}
+
+// ─── Reconciliation ──────────────────────────────────────────────────────────────────────────────
+
+export type ReconClassification = "MATCHED" | "MISSING_SETTLEMENT" | "MISSING_INTERNAL" | "DUPLICATE" | "REVERSED"
+export type ReconCaseStatus = "OPEN" | "INVESTIGATING" | "RESOLVED"
+
+export interface ReconTransaction {
+  id: string
+  loanId: string
+  borrower: string
+  amount: number
+  rail: RecoveryRail
+  internalStatus: string
+  externalReference: string
+  classification: ReconClassification
+  createdAt: string
+}
+
+export interface ReconSettlement {
+  id: string
+  transactionId: string
+  amount: number
+  settlementStatus: string
+  settlementDate: string
+  bank: string
+}
+
+export interface ReconCase {
+  id: string
+  transactionId: string
+  loanId: string
+  borrower: string
+  amount: number
+  rail: RecoveryRail
+  externalReference: string
+  internalStatus: string
+  bankStatus: string
+  agingHours: number
+  classification: ReconClassification
+  status: ReconCaseStatus
+  assignedTo: string | null
+  createdAt: string
+  notes?: string
+  resolution?: string
+  resolvedAt?: string | null
+}
+
+export const reconKPIs = {
+  gapRate: 0.8,
+  gapRateTarget: 1.0,
+  avgResolutionHours: 3.4,
+  resolutionTarget: 6,
+  resolvedToday: 7,
+  matchRate: 98.6,
+  totalSettlements: 1823,
+  totalTransactions: 1849,
+  duplicatesDetected: 2,
+  openCases: 5,
+}
+
+export const reconTransactions: ReconTransaction[] = [
+  { id: "TXN-NDD-001", loanId: "LN-28471", borrower: "Emeka Okafor", amount: 487500, rail: "NDD", internalStatus: "SUCCESS", externalReference: "EXT-NDD-881234", classification: "MATCHED", createdAt: "2025-05-24T10:00:00Z" },
+  { id: "TXN-NDD-002", loanId: "LN-41023", borrower: "Aisha Mohammed", amount: 800000, rail: "NDD", internalStatus: "SUCCESS", externalReference: "EXT-NDD-773491", classification: "MISSING_SETTLEMENT", createdAt: "2025-05-23T14:00:00Z" },
+  { id: "TXN-RMT-001", loanId: "LN-89456", borrower: "Segun Adewale", amount: 1800000, rail: "REMITA", internalStatus: "SUCCESS", externalReference: "EXT-RMT-334891", classification: "DUPLICATE", createdAt: "2025-05-22T09:30:00Z" },
+  { id: "TXN-NDD-003", loanId: "LN-55247", borrower: "Chidinma Obi", amount: 3000000, rail: "NDD", internalStatus: "SUCCESS", externalReference: "EXT-NDD-556712", classification: "MATCHED", createdAt: "2025-05-21T11:00:00Z" },
+]
+
+export const reconSettlements: ReconSettlement[] = [
+  { id: "STL-REC-001", transactionId: "TXN-NDD-001", amount: 487500, settlementStatus: "SETTLED", settlementDate: "2025-05-24T22:00:00Z", bank: "Access Bank" },
+  { id: "STL-REC-002", transactionId: "TXN-RMT-001", amount: 1750000, settlementStatus: "SETTLED", settlementDate: "2025-05-22T23:00:00Z", bank: "GTBank" },
+]
+
+export const reconCases: ReconCase[] = [
+  {
+    id: "REC-001",
+    transactionId: "TXN-NDD-002",
+    loanId: "LN-41023",
+    borrower: "Aisha Mohammed",
+    amount: 800000,
+    rail: "NDD",
+    externalReference: "EXT-NDD-773491",
+    internalStatus: "SUCCESS",
+    bankStatus: "PENDING",
+    agingHours: 36,
+    classification: "MISSING_SETTLEMENT",
+    status: "OPEN",
+    assignedTo: null,
+    createdAt: "2025-05-23T14:30:00Z",
+  },
+  {
+    id: "REC-002",
+    transactionId: "TXN-RMT-001",
+    loanId: "LN-89456",
+    borrower: "Segun Adewale",
+    amount: 1800000,
+    rail: "REMITA",
+    externalReference: "EXT-RMT-334891",
+    internalStatus: "SUCCESS",
+    bankStatus: "SETTLED",
+    agingHours: 12,
+    classification: "DUPLICATE",
+    status: "INVESTIGATING",
+    assignedTo: "Kunle Adesanya",
+    createdAt: "2025-05-22T09:45:00Z",
+    notes: "Duplicate settlement received from REMITA — investigating double processing.",
   },
 ]
 

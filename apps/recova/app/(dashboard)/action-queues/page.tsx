@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   AlertTriangle, RefreshCcw, UserPlus, PauseCircle, ChevronRight,
@@ -399,7 +399,7 @@ function DisputeQueue() {
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-export default function ActionQueuesPage() {
+function ActionQueuesContent() {
   const params = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabKey>((params.get("tab") as TabKey) ?? "failed")
 
@@ -448,5 +448,13 @@ export default function ActionQueuesPage() {
         {activeTab === "disputes" && <DisputeQueue />}
       </div>
     </div>
+  )
+}
+
+export default function ActionQueuesPage() {
+  return (
+    <Suspense>
+      <ActionQueuesContent />
+    </Suspense>
   )
 }
