@@ -1,8 +1,6 @@
-import { Download, RefreshCw } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { DisputesModule } from "@/components/disputes/disputes-module"
+import { QueuePageActions } from "@/components/wizards/page-actions"
 
 export default function DisputesPage() {
   return (
@@ -10,18 +8,7 @@ export default function DisputesPage() {
       <PageHeader
         title="Disputes"
         description="Review borrower disputes and bank indemnity claims. Recovery is paused while a dispute is open."
-        actions={
-          <>
-            <Button variant="soft" className="h-12 px-5">
-              Export Logs
-              <Download />
-            </Button>
-            <Button variant="primary" className="h-12 px-5">
-              Sync
-              <RefreshCw />
-            </Button>
-          </>
-        }
+        actions={<QueuePageActions entity="Dispute cases" exportLabel="Export Logs" />}
       />
       <div className="px-8 pb-12">
         <DisputesModule />

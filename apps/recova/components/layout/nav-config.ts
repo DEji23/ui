@@ -25,6 +25,9 @@ import {
   Users,
   Wallet,
   BellRing,
+  Undo2,
+  History,
+  ShieldAlert,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -103,6 +106,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: TriangleAlert,
         permission: "ledger.view",
       },
+      {
+        label: "Refunds & Reversals",
+        href: "/refunds",
+        icon: Undo2,
+        permission: "refund.initiate",
+      },
     ],
   },
   {
@@ -131,6 +140,17 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/notification-rules",
         icon: BellRing,
         permission: "policy.configure",
+      },
+      {
+        label: "Notification Log",
+        href: "/notification-log",
+        icon: History,
+      },
+      {
+        label: "Risk & Abuse Controls",
+        href: "/risk-controls",
+        icon: ShieldAlert,
+        permission: "recovery.override",
       },
     ],
   },

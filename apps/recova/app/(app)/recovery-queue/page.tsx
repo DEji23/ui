@@ -1,8 +1,6 @@
-import { Download, RefreshCw } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { RecoveryQueue } from "@/components/recovery/recovery-queue"
+import { QueuePageActions } from "@/components/wizards/page-actions"
 
 export default function RecoveryQueuePage() {
   return (
@@ -10,18 +8,7 @@ export default function RecoveryQueuePage() {
       <PageHeader
         title="Recovery Queue"
         description="Manage borrower recovery activities and recovery attempts."
-        actions={
-          <>
-            <Button variant="soft" className="h-12 px-5">
-              Export Records
-              <Download />
-            </Button>
-            <Button variant="primary" className="h-12 px-5">
-              Sync
-              <RefreshCw />
-            </Button>
-          </>
-        }
+        actions={<QueuePageActions entity="Recovery cases" />}
       />
       <div className="px-8 pb-12">
         <RecoveryQueue />

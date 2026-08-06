@@ -1,8 +1,6 @@
-import { Download, RefreshCw } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { CollectionsModule } from "@/components/escalation/collections-module"
+import { QueuePageActions } from "@/components/wizards/page-actions"
 
 export default function CollectionsPage() {
   return (
@@ -10,18 +8,7 @@ export default function CollectionsPage() {
       <PageHeader
         title="Collections"
         description="Work Tier 3 cases, negotiate payment plans and track agent ownership."
-        actions={
-          <>
-            <Button variant="soft" className="h-12 px-5">
-              Export Logs
-              <Download />
-            </Button>
-            <Button variant="primary" className="h-12 px-5">
-              Sync
-              <RefreshCw />
-            </Button>
-          </>
-        }
+        actions={<QueuePageActions entity="Collections cases" exportLabel="Export Logs" />}
       />
       <div className="px-8 pb-12">
         <CollectionsModule />

@@ -1,8 +1,6 @@
-import { Download, RefreshCw } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { LegalModule } from "@/components/escalation/legal-module"
+import { QueuePageActions } from "@/components/wizards/page-actions"
 
 export default function LegalReviewPage() {
   return (
@@ -10,18 +8,7 @@ export default function LegalReviewPage() {
       <PageHeader
         title="Legal Review"
         description="Track loans escalated to legal, approvals and write-off recommendations."
-        actions={
-          <>
-            <Button variant="soft" className="h-12 px-5">
-              Export Logs
-              <Download />
-            </Button>
-            <Button variant="primary" className="h-12 px-5">
-              Sync
-              <RefreshCw />
-            </Button>
-          </>
-        }
+        actions={<QueuePageActions entity="Legal cases" exportLabel="Export Logs" />}
       />
       <div className="px-8 pb-12">
         <LegalModule />
