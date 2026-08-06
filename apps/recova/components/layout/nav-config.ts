@@ -10,6 +10,8 @@ import {
   KeyRound,
   Landmark,
   LayoutGrid,
+  ListChecks,
+  FileText,
   MessageSquareWarning,
   Receipt,
   ScrollText,
@@ -47,7 +49,10 @@ export interface NavGroup {
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: null,
-    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutGrid }],
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+      { label: "Action Queues", href: "/action-queues", icon: ListChecks },
+    ],
   },
   {
     label: "ONBOARDING",
@@ -60,6 +65,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "RECOVERY OPERATIONS",
     items: [
       { label: "Recovery Queue", href: "/recovery-queue", icon: Layers },
+      { label: "Loan Cases", href: "/loans", icon: FileText },
       { label: "Collections", href: "/collections", icon: CreditCard },
       { label: "Legal Review", href: "/legal-review", icon: Gavel },
       { label: "Disputes", href: "/disputes", icon: MessageSquareWarning },
