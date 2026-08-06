@@ -12,6 +12,8 @@ import {
   LayoutGrid,
   ListChecks,
   FileText,
+  Rocket,
+  Code2,
   MessageSquareWarning,
   Receipt,
   ScrollText,
@@ -135,6 +137,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "ADMIN",
     items: [
+      { label: "Organisations", href: "/organisations", icon: Building2 },
+      { label: "Onboarding", href: "/onboarding", icon: Rocket },
+      { label: "Developer Console", href: "/developer", icon: Code2 },
       { label: "User Management", href: "/users", icon: Users, permission: "role.assign" },
       { label: "Maker-Checker", href: "/maker-checker", icon: ShieldCheck },
       {
