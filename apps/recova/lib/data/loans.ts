@@ -4,6 +4,7 @@ import {
   type LoanInput,
   type RepaymentObligation,
 } from "@/lib/domain/scheduler"
+import { APP_NOW } from "@/lib/clock"
 
 /**
  * Loan book.
@@ -231,7 +232,7 @@ const SEEDS: Seed[] = [
   },
 ]
 
-const REFERENCE_DATE = new Date("2026-08-06T09:00:00Z")
+const REFERENCE_DATE = APP_NOW
 
 function build() {
   const loans: Loan[] = []

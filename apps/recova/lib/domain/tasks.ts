@@ -1,3 +1,5 @@
+import { APP_NOW } from "@/lib/clock"
+
 import type { Permission, Role } from "./rbac"
 
 /**
@@ -235,7 +237,7 @@ export const RECOMMENDATION_TTL_MINUTES = 30
 
 export function isRecommendationStale(
   recommendation: RecommendedAction,
-  now: Date = new Date()
+  now: Date = APP_NOW
 ): boolean {
   const ageMinutes =
     (now.getTime() - new Date(recommendation.computedAt).getTime()) / 60_000
@@ -249,7 +251,7 @@ export function sortByPriority(tasks: Task[]): Task[] {
   })
 }
 
-export function isBreachingSla(task: Task, now: Date = new Date()): boolean {
+export function isBreachingSla(task: Task, now: Date = APP_NOW): boolean {
   return (
     task.status !== "RESOLVED" &&
     task.status !== "CLOSED" &&

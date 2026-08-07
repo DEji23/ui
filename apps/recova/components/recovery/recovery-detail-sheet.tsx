@@ -4,6 +4,7 @@ import * as React from "react"
 import { ArrowRight, Download, History, Pause, RotateCw } from "lucide-react"
 
 import { naira, relativeTime } from "@/lib/format"
+import { APP_NOW } from "@/lib/clock"
 import { can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
 import { DEFAULT_POLICY } from "@/lib/domain/policy"
@@ -46,7 +47,8 @@ export function RecoveryDetailSheet({
     recoveryCase,
     accounts,
     DEFAULT_POLICY,
-    RAIL_HEALTH_MAP
+    RAIL_HEALTH_MAP,
+    APP_NOW
   )
 
   const mayRetry = can(CURRENT_USER.role, "recovery.retry") && eligibility.allowed

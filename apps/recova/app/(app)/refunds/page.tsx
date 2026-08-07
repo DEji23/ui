@@ -156,7 +156,7 @@ export default function RefundsPage() {
                   const actionable = refund.status === "PENDING_APPROVAL"
                   return (
                     <TableRow key={refund.id}>
-                      <TableCell className="font-semibold text-ink">
+                      <TableCell className="whitespace-nowrap font-semibold text-ink">
                         {refund.id}
                         {refund.disputeId ? (
                           <p className="text-xs font-normal text-subtle">
@@ -164,8 +164,10 @@ export default function RefundsPage() {
                           </p>
                         ) : null}
                       </TableCell>
-                      <TableCell className="text-subtle">{refund.loanId}</TableCell>
-                      <TableCell className="text-subtle">
+                      <TableCell className="whitespace-nowrap text-subtle">
+                        {refund.loanId}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-subtle">
                         {refund.originalTransactionId}
                       </TableCell>
                       <TableCell className="tabular font-semibold">
@@ -278,10 +280,12 @@ export default function RefundsPage() {
                   const eligible = REVERSAL_RETRY_ELIGIBLE[reversal.reason]
                   return (
                     <TableRow key={reversal.id}>
-                      <TableCell className="font-semibold text-ink">
+                      <TableCell className="whitespace-nowrap font-semibold text-ink">
                         {reversal.id}
                       </TableCell>
-                      <TableCell className="text-subtle">{reversal.loanId}</TableCell>
+                      <TableCell className="whitespace-nowrap text-subtle">
+                        {reversal.loanId}
+                      </TableCell>
                       <TableCell className="tabular font-semibold">
                         {naira(reversal.amount)}
                       </TableCell>

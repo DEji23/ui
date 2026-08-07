@@ -1,3 +1,5 @@
+import { APP_NOW } from "@/lib/clock"
+
 const nairaCompact = new Intl.NumberFormat("en-NG", {
   notation: "compact",
   maximumFractionDigits: 1,
@@ -32,16 +34,24 @@ export function maskAccount(value: string): string {
   return `${"•".repeat(Math.max(3, value.length - 4))}${value.slice(-4)}`
 }
 
-export function relativeTime(iso: string, now: Date = new Date()): string {
-  const diff = now.getTime() - new Date(iso).getTime()
-  const minutes = Math.round(diff / 60_000)
+/**
+ * "2h ago" for past timestamps, "in 2h" for future ones — callers use this
+ * for both elapsed-since (sentAt, lastCheckedAt) and time-until (dueTime,
+ * slaDueAt, autoReleaseAt), so both directions have to read correctly.
+ */
+export function relativeTime(iso: string, now: Date = APP_NOW): string {
+  const diffMs = now.getTime() - new Date(iso).getTime()
+  const future = diffMs < 0
+  const minutes = Math.round(Math.abs(diffMs) / 60_000)
   if (minutes < 1) return "just now"
-  if (minutes < 60) return `${minutes}m ago`
+  const format = (n: number, unit: string) =>
+    future ? `in ${n}${unit}` : `${n}${unit} ago`
+  if (minutes < 60) return format(minutes, "m")
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return format(hours, "h")
   const days = Math.round(hours / 24)
-  if (days < 30) return `${days}d ago`
-  return `${Math.round(days / 30)}mo ago`
+  if (days < 30) return format(days, "d")
+  return format(Math.round(days / 30), "mo")
 }
 
 export function shortDate(iso: string): string {
