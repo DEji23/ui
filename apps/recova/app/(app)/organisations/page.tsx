@@ -4,11 +4,12 @@ import { Building2, CheckCircle2, Plus, ShieldAlert } from "lucide-react"
 import { shortDate } from "@/lib/format"
 import { ORGANISATIONS } from "@/lib/data/organisations"
 import {
-  ONBOARDING_ORDER,
-  ONBOARDING_STATE_LABEL,
-  evaluateActivation,
-  stageIndex,
-  type OnboardingState,
+  EXTERNAL_PHASE_LABEL,
+  EXTERNAL_PHASE_ORDER,
+  currentExternalPhase,
+  evaluateExternalReadiness,
+  isLive,
+  type ExternalPhase,
 } from "@/lib/domain/onboarding"
 import { can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
@@ -29,35 +30,31 @@ import { StatCard } from "@/components/shared/stat-card"
 
 type Tone = "neutral" | "success" | "warning" | "error" | "info" | "purple" | "brand"
 
-const STATE_TONE: Record<OnboardingState, Tone> = {
-  INVITED: "neutral",
-  PROFILE_IN_PROGRESS: "info",
-  COMPLIANCE_REVIEW: "warning",
-  CONFIGURATION_IN_PROGRESS: "warning",
-  SANDBOX_READY: "info",
-  UAT_CERTIFIED: "purple",
-  PRODUCTION_ACTIVE: "success",
+// Tone for the *current, not-yet-complete* phase — "success" is reserved
+// for organisations that are actually live (see the badge below).
+const PHASE_TONE: Record<ExternalPhase, Tone> = {
+  ORG_REGISTRATION: "neutral",
+  COMPLIANCE_APPROVAL: "info",
+  ADMIN_USER_CREATION: "info",
+  RECOVERY_POLICY_CONFIGURATION: "warning",
+  API_INTEGRATION: "warning",
+  SANDBOX_CERTIFICATION: "purple",
+  PRODUCTION_APPROVAL: "warning",
 }
-
-const ENV_TONE = {
-  SANDBOX: "neutral",
-  UAT: "warning",
-  PRODUCTION: "success",
-} as const
 
 /**
  * Tenant register.
  * The pipeline strip makes the environment gate visible: an organisation
- * cannot skip from Sandbox to Production, and the awaiting-approval count
- * is the queue an internal admin actually works.
+ * cannot skip a phase, and "awaiting go-live" is a real, computed queue —
+ * every phase but Production Approval has already passed.
  */
 export default function OrganisationsPage() {
-  const live = ORGANISATIONS.filter((o) => o.state === "PRODUCTION_ACTIVE")
+  const live = ORGANISATIONS.filter((o) => isLive(o.phasesComplete))
   const awaitingApproval = ORGANISATIONS.filter(
-    (o) => o.state === "UAT_CERTIFIED" && !o.checklist.productionApproved
+    (o) => !isLive(o.phasesComplete) && currentExternalPhase(o.phasesComplete) === "PRODUCTION_APPROVAL"
   )
   const inSetup = ORGANISATIONS.filter(
-    (o) => stageIndex(o.state) < stageIndex("SANDBOX_READY")
+    (o) => !isLive(o.phasesComplete) && currentExternalPhase(o.phasesComplete) !== "PRODUCTION_APPROVAL"
   )
   const mayApprove = can(CURRENT_USER.role, "role.assign")
 
@@ -65,7 +62,7 @@ export default function OrganisationsPage() {
     <>
       <PageHeader
         title="Organisations"
-        description="Tenants onboarding onto the platform. Live recovery is gated on the activation checklist."
+        description="Tenants onboarding onto the platform. Live recovery is gated on all seven onboarding phases."
         actions={
           <Button variant="primary" className="h-12 px-5" disabled={!mayApprove}>
             Create Organisation
@@ -77,7 +74,7 @@ export default function OrganisationsPage() {
       <div className="flex flex-col gap-6 px-8 pb-12">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label="Production Active"
+            label="Production Enabled"
             value={String(live.length)}
             icon={CheckCircle2}
             tone="success"
@@ -88,14 +85,14 @@ export default function OrganisationsPage() {
             value={String(awaitingApproval.length)}
             icon={ShieldAlert}
             tone="warning"
-            caption="UAT certified, approval pending"
+            caption="Sandbox certified, approval pending"
           />
           <StatCard
             label="In Setup"
             value={String(inSetup.length)}
             icon={Building2}
             tone="info"
-            caption="Profile, compliance or configuration"
+            caption="Registration through sandbox certification"
           />
           <StatCard
             label="Total Tenants"
@@ -108,9 +105,9 @@ export default function OrganisationsPage() {
 
         {awaitingApproval.length > 0 ? (
           <Alert tone="warning" title="Go-live approvals outstanding">
-            {awaitingApproval.map((o) => o.tradingName).join(", ")} passed UAT but has
-            not been countersigned. Production credentials are withheld until an
-            internal approver signs off.
+            {awaitingApproval.map((o) => o.tradingName).join(", ")} passed sandbox
+            certification but has not been countersigned. Production credentials are
+            withheld until VFD Operations signs off.
           </Alert>
         ) : null}
 
@@ -119,22 +116,25 @@ export default function OrganisationsPage() {
             <div>
               <CardTitle>Onboarding Pipeline</CardTitle>
               <CardDescription>
-                Sandbox → UAT → Production. No stage may be skipped.
+                Registration → Compliance → Admin → Policy → Integration → Sandbox →
+                Production. No phase may be skipped.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="flex flex-wrap gap-2">
-              {ONBOARDING_ORDER.map((state) => {
-                const count = ORGANISATIONS.filter((o) => o.state === state).length
+              {EXTERNAL_PHASE_ORDER.map((phase) => {
+                const count = ORGANISATIONS.filter(
+                  (o) => !isLive(o.phasesComplete) && currentExternalPhase(o.phasesComplete) === phase
+                ).length
                 return (
                   <div
-                    key={state}
+                    key={phase}
                     className="min-w-[150px] flex-1 rounded-[var(--radius-control)] border border-stroke p-4"
                   >
                     <p className="tabular text-2xl font-bold text-ink-header">{count}</p>
                     <p className="mt-1 text-xs font-semibold text-ink">
-                      {ONBOARDING_STATE_LABEL[state]}
+                      {EXTERNAL_PHASE_LABEL[phase]}
                     </p>
                   </div>
                 )
@@ -148,7 +148,7 @@ export default function OrganisationsPage() {
             <div>
               <CardTitle>Tenants</CardTitle>
               <CardDescription>
-                Activation progress is computed from the checklist, not self-reported
+                Onboarding progress is computed from completed phases, not self-reported
               </CardDescription>
             </div>
           </CardHeader>
@@ -160,15 +160,15 @@ export default function OrganisationsPage() {
                   <TableHead>Service Model</TableHead>
                   <TableHead>Users</TableHead>
                   <TableHead>Environment</TableHead>
-                  <TableHead>Checklist</TableHead>
+                  <TableHead>Readiness</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead>Activated</TableHead>
-                  <TableHead>Stage</TableHead>
+                  <TableHead>Go-Live</TableHead>
+                  <TableHead>Phase</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {ORGANISATIONS.map((org) => {
-                  const verdict = evaluateActivation(org.checklist)
+                  const readiness = evaluateExternalReadiness(org.phasesComplete)
                   return (
                     <TableRow key={org.id}>
                       <TableCell className="whitespace-nowrap">
@@ -187,22 +187,24 @@ export default function OrganisationsPage() {
                         {org.users.length}
                       </TableCell>
                       <TableCell>
-                        <Badge tone={ENV_TONE[org.environment]}>{org.environment}</Badge>
+                        <Badge tone={readiness.live ? "success" : "neutral"}>
+                          {readiness.live ? "PRODUCTION" : "SANDBOX"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="min-w-[160px]">
                         <div className="flex items-center gap-2">
                           <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-100">
                             <div
                               className={
-                                verdict.canActivate
+                                readiness.live
                                   ? "h-full rounded-full bg-success-500"
                                   : "h-full rounded-full bg-warning-600"
                               }
-                              style={{ width: `${verdict.progress}%` }}
+                              style={{ width: `${readiness.progress}%` }}
                             />
                           </div>
                           <span className="tabular text-xs text-subtle">
-                            {verdict.completed}/{verdict.total}
+                            {readiness.completed}/{readiness.total}
                           </span>
                         </div>
                       </TableCell>
@@ -210,11 +212,13 @@ export default function OrganisationsPage() {
                         {shortDate(org.createdAt)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-subtle">
-                        {org.activatedAt ? shortDate(org.activatedAt) : "—"}
+                        {org.goLiveAt ? shortDate(org.goLiveAt) : "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge dot tone={STATE_TONE[org.state]}>
-                          {ONBOARDING_STATE_LABEL[org.state]}
+                        <Badge dot tone={readiness.live ? "success" : PHASE_TONE[readiness.currentPhase]}>
+                          {readiness.live
+                            ? "Production Enabled"
+                            : EXTERNAL_PHASE_LABEL[readiness.currentPhase]}
                         </Badge>
                       </TableCell>
                     </TableRow>

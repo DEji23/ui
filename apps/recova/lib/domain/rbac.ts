@@ -55,7 +55,10 @@ export const ROLES = [
   "DRO",
   "DRM",
   "FINANCE",
+  "COMPLIANCE",
   "LEGAL",
+  "SUPPORT",
+  "TECH_OPS",
   "INTEGRATOR",
 ] as const
 
@@ -67,7 +70,10 @@ export const ROLE_LABEL: Record<Role, string> = {
   DRO: "Debt Recovery Officer",
   DRM: "Debt Recovery Manager",
   FINANCE: "Finance / Ops",
+  COMPLIANCE: "Compliance",
   LEGAL: "Legal",
+  SUPPORT: "Customer Support",
+  TECH_OPS: "Technology Operations",
   INTEGRATOR: "Integrator",
 }
 
@@ -111,6 +117,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "collections.manage",
     "dispute.review",
     "dispute.resolve",
+    // Onboarding PRD Phase 3 lists "Approve refunds" as a DRM permission.
+    "refund.approve",
     "report.view",
     "report.export",
     "audit.view",
@@ -126,7 +134,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "report.export",
     "audit.view",
   ],
+  // Onboarding PRD Phase 3: Audit Logs, Consent Records, Reports, Disputes.
+  COMPLIANCE: ["audit.view", "report.view", "report.export", "dispute.review", "mandate.view"],
   LEGAL: ["legal.escalate", "audit.view", "collections.manage", "report.view"],
+  // Not itemised in the onboarding PRD's permission table — scoped narrowly
+  // to read-only borrower/mandate visibility until a dedicated support
+  // capability is specified.
+  SUPPORT: ["mandate.view", "report.view"],
+  // Onboarding PRD Phase 3: API Health, Scheduler, Queue Monitoring,
+  // Integration Status — closest existing action-level permissions.
+  TECH_OPS: ["webhook.configure", "audit.view", "report.view"],
   INTEGRATOR: [],
 }
 
