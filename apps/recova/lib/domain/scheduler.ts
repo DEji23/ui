@@ -79,6 +79,8 @@ export interface Loan {
   state: LoanState
   productName: string
   organisationId: string
+  /** Paid beyond every obligation's total due — carried forward or refunded. */
+  overpaymentAmount: number
 }
 
 export interface LoanInput {

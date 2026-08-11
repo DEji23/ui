@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
 import { PolicyEnginePageActions } from "@/components/wizards/misc-page-actions"
+import { OrgPolicyOverrides } from "@/components/policy/org-policy-overrides"
 
 /**
  * Policy control panel.
@@ -71,6 +72,10 @@ export default function PolicyEnginePage() {
             ))}
           </div>
         )}
+
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          Platform Default — applies to every organisation without an override below
+        </p>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <Card>
@@ -214,6 +219,8 @@ export default function PolicyEnginePage() {
             </CardContent>
           </Card>
         </div>
+
+        <OrgPolicyOverrides />
 
         <Card>
           <CardHeader>

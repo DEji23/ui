@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { naira } from "@/lib/format"
 import { RECOVERY_CASES } from "@/lib/data/recovery-cases"
+import { organisationIdForLoan } from "@/lib/data/loans"
 import type { RecoveryCase, RecoveryState } from "@/lib/domain/types"
 import { Card } from "@/components/ui/card"
 import {
@@ -17,6 +18,7 @@ import {
 import { Tabs, type TabItem } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/shared/empty-state"
 import { QueueToolbar } from "@/components/shared/queue-toolbar"
+import { OrgScopeSelector } from "@/components/shared/org-scope-selector"
 import { RailBadge, RecoveryStatePill } from "@/components/shared/status-pill"
 import { RecoveryDetailSheet } from "./recovery-detail-sheet"
 
@@ -42,6 +44,7 @@ export function RecoveryQueue({
   const [cases, setCases] = React.useState<RecoveryCase[]>(initialCases)
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
+  const [org, setOrg] = React.useState("all")
   const [selected, setSelected] = React.useState<RecoveryCase | null>(null)
 
   function updateCase(updated: RecoveryCase) {
@@ -49,22 +52,28 @@ export function RecoveryQueue({
     setSelected(updated)
   }
 
+  const scoped = React.useMemo(
+    () =>
+      org === "all" ? cases : cases.filter((c) => organisationIdForLoan(c.loanId) === org),
+    [cases, org]
+  )
+
   const tabItems: TabItem[] = React.useMemo(
     () =>
       FILTERS.map((filter) => ({
         value: filter.value,
         label: filter.label,
         count: filter.states
-          ? cases.filter((c) => filter.states!.includes(c.state)).length
-          : cases.length,
+          ? scoped.filter((c) => filter.states!.includes(c.state)).length
+          : scoped.length,
       })),
-    [cases]
+    [scoped]
   )
 
   const rows = React.useMemo(() => {
     const filter = FILTERS.find((f) => f.value === tab)
     const q = query.trim().toLowerCase()
-    return cases
+    return scoped
       .filter((c) => !filter?.states || filter.states.includes(c.state))
       .filter((c) =>
         q === ""
@@ -74,7 +83,7 @@ export function RecoveryQueue({
               .toLowerCase()
               .includes(q)
       )
-  }, [cases, tab, query])
+  }, [scoped, tab, query])
 
   return (
     <>
@@ -83,7 +92,9 @@ export function RecoveryQueue({
           value={query}
           onValueChange={setQuery}
           placeholder="Search borrower, loan ID, officer…"
-        />
+        >
+          <OrgScopeSelector value={org} onValueChange={setOrg} />
+        </QueueToolbar>
 
         <Tabs items={tabItems} value={tab} onValueChange={setTab} className="mt-6" />
 

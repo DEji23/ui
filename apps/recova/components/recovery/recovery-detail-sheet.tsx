@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowRight, Download, History, Pause, RotateCw } from "lucide-react"
+import { ArrowRight, Download, History, Pause, RefreshCcw, RotateCw } from "lucide-react"
 
 import { naira, relativeTime } from "@/lib/format"
 import { APP_NOW } from "@/lib/clock"
@@ -11,7 +11,7 @@ import { CURRENT_USER } from "@/lib/data/session"
 import { DEFAULT_POLICY } from "@/lib/domain/policy"
 import { accountsFor } from "@/lib/data/recovery-cases"
 import { RAIL_HEALTH_MAP } from "@/lib/data/operations"
-import { recommend } from "@/lib/domain/orchestration"
+import { accountSuspension, recommend } from "@/lib/domain/orchestration"
 import { allowedTransitions, retryEligibility } from "@/lib/domain/state-machine"
 import {
   ESCALATION_TIER_LABEL,
@@ -167,6 +167,20 @@ export function RecoveryDetailSheet({
     })
   }
 
+  function handleReconsent() {
+    if (!recoveryCase) return
+    onUpdate({
+      ...recoveryCase,
+      state: "IN_RECOVERY",
+      retryCount: 0,
+      lastAction: "Re-initiated iGree consent — awaiting new BVN-linked accounts",
+    })
+    setResult({
+      title: "Consent re-initiated",
+      message: `${recoveryCase.borrowerName} has been sent a new iGree consent request. Once granted, any newly-linked accounts get a fresh mandate and the retry ladder restarts from attempt 0.`,
+    })
+  }
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -227,6 +241,23 @@ export function RecoveryDetailSheet({
                   <ArrowRight />
                 </Button>
               </div>
+              {recoveryCase.state === "RECOVERY_FAILED" ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  block
+                  disabled={!can(CURRENT_USER.role, "recovery.retry")}
+                  title={
+                    can(CURRENT_USER.role, "recovery.retry")
+                      ? undefined
+                      : "Requires the recovery.retry permission."
+                  }
+                  onClick={handleReconsent}
+                >
+                  <RefreshCcw />
+                  Re-initiate Consent
+                </Button>
+              ) : null}
             </>
           }
         >
@@ -332,27 +363,40 @@ export function RecoveryDetailSheet({
 
             <DetailSection title="Account Intelligence">
               <div className="flex flex-col gap-2">
-                {accounts.map((account) => (
-                  <div
-                    key={account.accountNumber}
-                    className="flex items-center justify-between gap-3 rounded-[var(--radius-nav)] bg-surface p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold text-ink">
-                        {account.bankName} · {account.accountNumber}
-                      </p>
-                      <p className="text-[10px] text-subtle">
-                        Mandate {account.mandateStatus}
-                        {account.blacklisted ? " · blacklisted" : ""}
-                      </p>
+                {accounts.map((account) => {
+                  const suspension = accountSuspension(
+                    account.accountNumber,
+                    recoveryCase.attempts,
+                    APP_NOW
+                  )
+                  return (
+                    <div
+                      key={account.accountNumber}
+                      className="flex items-center justify-between gap-3 rounded-[var(--radius-nav)] bg-surface p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-ink">
+                          {account.bankName} · {account.accountNumber}
+                        </p>
+                        <p className="text-[10px] text-subtle">
+                          Mandate {account.mandateStatus}
+                          {account.blacklisted ? " · blacklisted" : ""}
+                        </p>
+                        {suspension.suspended && suspension.until ? (
+                          <p className="mt-0.5 text-[10px] font-semibold text-warning-600">
+                            Suspended until {relativeTime(suspension.until.toISOString())} —{" "}
+                            {suspension.recentFailures} failures in 24h
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className="tabular shrink-0 text-xs font-semibold text-ink">
+                        {account.lastBalance === null
+                          ? "Balance unknown"
+                          : naira(account.lastBalance)}
+                      </span>
                     </div>
-                    <span className="tabular shrink-0 text-xs font-semibold text-ink">
-                      {account.lastBalance === null
-                        ? "Balance unknown"
-                        : naira(account.lastBalance)}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
                 {accounts.length === 0 ? (
                   <p className="text-xs text-subtle">No BVN-linked accounts on file.</p>
                 ) : null}

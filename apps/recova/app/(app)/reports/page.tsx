@@ -20,6 +20,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
 import { GenerateReportButton, SpoolReportDownload } from "@/components/wizards/misc-page-actions"
+import { OrgBillingBreakdown } from "@/components/reports/org-billing-breakdown"
 
 /**
  * Reporting + unit economics.
@@ -203,6 +204,8 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </div>
+
+        <OrgBillingBreakdown usage={USAGE} />
       </div>
     </>
   )

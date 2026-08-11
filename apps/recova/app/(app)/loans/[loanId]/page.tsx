@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, CalendarClock, CircleAlert, Coins, Layers } from "lucide-react"
 
 import { naira, percent, relativeTime, shortDate } from "@/lib/format"
-import { LOAN_REFERENCE_DATE, loanById, obligationsFor } from "@/lib/data/loans"
+import { LOANS, LOAN_REFERENCE_DATE, loanById, obligationsFor } from "@/lib/data/loans"
 import { RECOVERY_CASES, accountsFor } from "@/lib/data/recovery-cases"
 import { RAIL_HEALTH_MAP } from "@/lib/data/operations"
 import { DEFAULT_POLICY } from "@/lib/domain/policy"
@@ -36,6 +36,7 @@ import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
 import { RailBadge, RecoveryStatePill } from "@/components/shared/status-pill"
 import { InterventionPanel } from "@/components/loans/intervention-panel"
+import { OverpaymentAlert } from "@/components/loans/overpayment-alert"
 
 /**
  * Loan & Customer 360 — PRD Module 3.
@@ -57,16 +58,7 @@ const OBLIGATION_TONE: Record<ObligationState, Tone> = {
 }
 
 export function generateStaticParams() {
-  return [
-    { loanId: "LN-2024-1247" },
-    { loanId: "LN-2024-1302" },
-    { loanId: "LN-2024-1355" },
-    { loanId: "LN-2024-1401" },
-    { loanId: "LN-28471" },
-    { loanId: "LN-28502" },
-    { loanId: "LN-28560" },
-    { loanId: "LN-28611" },
-  ]
+  return LOANS.map((loan) => ({ loanId: loan.id }))
 }
 
 export default async function LoanDetailPage({
@@ -112,6 +104,10 @@ export default async function LoanDetailPage({
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">
+        {loan.overpaymentAmount > 0 ? (
+          <OverpaymentAlert amount={loan.overpaymentAmount} customerName={loan.customerName} />
+        ) : null}
+
         {/* A. Loan summary */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard

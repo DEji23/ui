@@ -5,8 +5,50 @@ import type {
   FailureReason,
   LinkedAccount,
   Rail,
+  RecoveryAttempt,
   RecoveryCase,
 } from "./types"
+
+/* ------------------------------------------------------------------ */
+/* Adaptive suspension — 3 failures in 24h suspends an account for 48h */
+/* ------------------------------------------------------------------ */
+
+const SUSPENSION_FAILURE_THRESHOLD = 3
+const SUSPENSION_WINDOW_HOURS = 24
+const SUSPENSION_DURATION_HOURS = 48
+
+export interface AccountSuspension {
+  suspended: boolean
+  until: Date | null
+  recentFailures: number
+}
+
+/**
+ * Recomputed from the attempt log rather than stored — same "never trust a
+ * cached flag" principle the stale-recommendation guardrail uses elsewhere.
+ */
+export function accountSuspension(
+  accountNumber: string,
+  attempts: RecoveryAttempt[],
+  now: Date
+): AccountSuspension {
+  const windowStart = now.getTime() - SUSPENSION_WINDOW_HOURS * 3_600_000
+  const recentFailures = attempts
+    .filter((a) => a.accountNumber === accountNumber && a.outcome === "FAILED")
+    .filter((a) => new Date(a.attemptedAt).getTime() >= windowStart)
+    .sort((a, b) => new Date(a.attemptedAt).getTime() - new Date(b.attemptedAt).getTime())
+
+  if (recentFailures.length < SUSPENSION_FAILURE_THRESHOLD) {
+    return { suspended: false, until: null, recentFailures: recentFailures.length }
+  }
+
+  const triggeringFailure = recentFailures[SUSPENSION_FAILURE_THRESHOLD - 1]
+  const until = new Date(
+    new Date(triggeringFailure.attemptedAt).getTime() + SUSPENSION_DURATION_HOURS * 3_600_000
+  )
+
+  return { suspended: now < until, until, recentFailures: recentFailures.length }
+}
 
 /**
  * Recovery orchestration engine.
@@ -72,17 +114,20 @@ export function scoreAccount(
 }
 
 /**
- * Filter then rank. Blacklisted accounts and — when the policy says so —
+ * Filter then rank. Blacklisted accounts, adaptively-suspended accounts
+ * (3 failures in 24h → 48h cool-down) and — when the policy says so —
  * dormant/failed-mandate accounts never reach the debit engine at all.
  */
 export function rankAccounts(
   accounts: LinkedAccount[],
   policy: RecoveryPolicy,
-  now: Date = new Date()
+  now: Date = new Date(),
+  attempts: RecoveryAttempt[] = []
 ): ScoredAccount[] {
   return accounts
     .filter((a) => !a.blacklisted)
     .filter((a) => !(policy.mandate.excludeDormantAccounts && a.mandateStatus === "FAILED"))
+    .filter((a) => !accountSuspension(a.accountNumber, attempts, now).suspended)
     .map((a) => scoreAccount(a, now))
     .sort((a, b) => b.score - a.score)
 }
@@ -279,11 +324,16 @@ export function recommend(
     }
   }
 
-  const ranked = rankAccounts(accounts, policy, now)
+  const ranked = rankAccounts(accounts, policy, now, recoveryCase.attempts)
   if (ranked.length === 0) {
+    const anySuspended = accounts.some(
+      (a) => accountSuspension(a.accountNumber, recoveryCase.attempts, now).suspended
+    )
     return {
       eligible: false,
-      blockedReason: "No eligible accounts remain in the pool.",
+      blockedReason: anySuspended
+        ? "Every account is blacklisted, mandate-failed or suspended after repeated failures."
+        : "No eligible accounts remain in the pool.",
       rail: null,
       account: null,
       decision: null,

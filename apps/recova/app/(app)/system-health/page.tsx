@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
+import { RailBreakerPanel } from "@/components/system-health/rail-breaker-panel"
 
 /** Real-time health for every integration rail, queue and worker. */
 const SERVICES = [
@@ -115,37 +116,7 @@ export default function SystemHealthPage() {
             </CardContent>
           </Card>
 
-          <Card className="p-6">
-            <CardHeader className="p-0 pb-4">
-              <div>
-                <CardTitle>Rail Monitors</CardTitle>
-                <CardDescription>
-                  Success rate, latency and breaker state per rail
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 p-0">
-              {RAIL_HEALTH.map((rail) => (
-                <div
-                  key={rail.rail}
-                  className="flex items-center justify-between gap-3 rounded-[var(--radius-control)] border border-stroke p-4"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ink">
-                      {RAIL_LABEL[rail.rail]}
-                    </p>
-                    <p className="text-xs text-subtle">
-                      {percent(rail.successRate * 100)} success ·{" "}
-                      {rail.avgLatencyMs}ms · {rail.attempts.toLocaleString()} attempts
-                    </p>
-                  </div>
-                  <Badge dot tone={rail.circuitOpen ? "error" : "success"}>
-                    {rail.circuitOpen ? "Breaker open" : "Closed"}
-                  </Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <RailBreakerPanel />
         </div>
 
         <Card className="p-6">

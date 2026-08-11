@@ -15,9 +15,10 @@ import { APP_NOW } from "@/lib/clock"
  */
 
 interface Seed {
-  loan: Loan
+  loan: Omit<Loan, "overpaymentAmount">
   input: LoanInput
-  /** Payments already applied, oldest obligation first. */
+  /** Payments already applied, oldest obligation first — any excess over
+   *  every obligation's total due becomes the loan's overpaymentAmount. */
   paid: number
 }
 
@@ -228,7 +229,35 @@ const SEEDS: Seed[] = [
       amortizationType: "DECLINING_BALANCE",
       disbursementDate: "2026-04-30",
     },
-    paid: 999_999_999, // fully settled
+    // Deliberately more than the schedule's total due — the borrower
+    // overpaid, and `overpaymentAmount` below picks up the excess.
+    paid: 960_000,
+  },
+  {
+    loan: {
+      id: "LN-28650",
+      customerId: "BRW009",
+      customerName: "Grace Adeyinka",
+      amount: 350_000,
+      interestRate: 0.27,
+      tenureMonths: 3,
+      repaymentFrequency: "MONTHLY",
+      amortizationType: "FLAT",
+      disbursementDate: "2026-04-02",
+      state: "IN_RECOVERY",
+      productName: "Micro Loan",
+      organisationId: "org_vfd",
+    },
+    input: {
+      customerId: "BRW009",
+      amount: 350_000,
+      interestRate: 0.27,
+      tenureMonths: 3,
+      repaymentFrequency: "MONTHLY",
+      amortizationType: "FLAT",
+      disbursementDate: "2026-04-02",
+    },
+    paid: 0,
   },
 ]
 
@@ -239,7 +268,6 @@ function build() {
   const obligations: Record<string, RepaymentObligation[]> = {}
 
   for (const seed of SEEDS) {
-    loans.push(seed.loan)
     const schedule = generateSchedule(seed.loan.id, seed.input, REFERENCE_DATE)
 
     // Apply the seeded payment oldest-first, then mark anything still
@@ -274,6 +302,7 @@ function build() {
     })
 
     obligations[seed.loan.id] = applied
+    loans.push({ ...seed.loan, overpaymentAmount: Math.round(remaining * 100) / 100 })
   }
 
   return { loans, obligations }
@@ -290,6 +319,22 @@ export function loanById(id: string): Loan | undefined {
 
 export function obligationsFor(loanId: string): RepaymentObligation[] {
   return OBLIGATIONS[loanId] ?? []
+}
+
+/**
+ * Tenant scoping.
+ *
+ * The loan book is the one place `organisationId` is seeded directly — every
+ * other domain (recovery cases, mandates, ledger entries) derives its tenant
+ * by looking up the loan or customer they belong to, rather than carrying a
+ * second, potentially-drifting copy of the same field.
+ */
+export function organisationIdForLoan(loanId: string): string | undefined {
+  return loanById(loanId)?.organisationId
+}
+
+export function organisationIdForCustomer(customerId: string): string | undefined {
+  return LOANS.find((l) => l.customerId === customerId)?.organisationId
 }
 
 export const LOAN_REFERENCE_DATE = REFERENCE_DATE

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ShieldCheck, X } from "lucide-react"
+import { Check, Pencil, ShieldCheck, X } from "lucide-react"
 
 import { naira, relativeTime } from "@/lib/format"
 import { MAKER_CHECKER_ACTIONS, can } from "@/lib/domain/rbac"
@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -20,6 +21,52 @@ import {
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
 import { ResultDialog } from "@/components/queues/action-dialogs"
+
+interface ApprovalPolicy {
+  id: string
+  action: string
+  permission: string
+  thresholdNaira: number | null
+  requiredApprovers: string[]
+}
+
+const APPROVAL_POLICIES: ApprovalPolicy[] = [
+  {
+    id: "ap_refund",
+    action: "Refund approval",
+    permission: "refund.approve",
+    thresholdNaira: 50_000,
+    requiredApprovers: ["Finance", "Admin"],
+  },
+  {
+    id: "ap_legal",
+    action: "Legal escalation",
+    permission: "legal.escalate",
+    thresholdNaira: null,
+    requiredApprovers: ["DRM", "Legal"],
+  },
+  {
+    id: "ap_override",
+    action: "Force debit / recovery override",
+    permission: "recovery.override",
+    thresholdNaira: 100_000,
+    requiredApprovers: ["DRM", "Admin"],
+  },
+  {
+    id: "ap_policy",
+    action: "Policy exception",
+    permission: "policy.configure",
+    thresholdNaira: null,
+    requiredApprovers: ["Admin", "Super Admin"],
+  },
+  {
+    id: "ap_dispute",
+    action: "Dispute override",
+    permission: "dispute.override",
+    thresholdNaira: 25_000,
+    requiredApprovers: ["Finance", "DRM"],
+  },
+]
 
 /**
  * Maker-checker queue.
@@ -88,9 +135,32 @@ const PENDING: PendingApproval[] = [
 
 export default function MakerCheckerPage() {
   const [pending, setPending] = React.useState<PendingApproval[]>(PENDING)
+  const [policies, setPolicies] = React.useState<ApprovalPolicy[]>(APPROVAL_POLICIES)
+  const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [draftThreshold, setDraftThreshold] = React.useState("")
   const [result, setResult] = React.useState<{ title: string; message: string } | null>(
     null
   )
+  const mayConfigure = can(CURRENT_USER.role, "policy.configure")
+
+  function startEdit(policy: ApprovalPolicy) {
+    setEditingId(policy.id)
+    setDraftThreshold(policy.thresholdNaira === null ? "" : String(policy.thresholdNaira))
+  }
+
+  function saveThreshold(policy: ApprovalPolicy) {
+    const next = draftThreshold.trim() === "" ? null : Number(draftThreshold)
+    setPolicies((prev) =>
+      prev.map((p) => (p.id === policy.id ? { ...p, thresholdNaira: next } : p))
+    )
+    setEditingId(null)
+    setResult({
+      title: "Approval threshold updated",
+      message: `${policy.action} now requires ${policy.requiredApprovers.join(" + ")} sign-off ${
+        next === null ? "on every request" : `above ${naira(next)}`
+      }. This change is itself written to the audit log as a maker-checker action.`,
+    })
+  }
 
   function decide(item: PendingApproval, decision: "APPROVED" | "REJECTED") {
     setPending((prev) => prev.filter((p) => p.id !== item.id))
@@ -215,18 +285,82 @@ export default function MakerCheckerPage() {
         <Card className="p-6">
           <CardHeader className="p-0 pb-4">
             <div>
-              <CardTitle>Actions Requiring Approval</CardTitle>
+              <CardTitle>Approval Policies</CardTitle>
               <CardDescription>
-                Configured set — changing it is itself a maker-checker action
+                Naira threshold and required approvers per action — configured set backs the{" "}
+                {MAKER_CHECKER_ACTIONS.length} permissions below, and changing a threshold is
+                itself a maker-checker action
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2 p-0">
-            {MAKER_CHECKER_ACTIONS.map((action) => (
-              <Badge key={action} tone="brand" className="font-mono">
-                {action}
-              </Badge>
-            ))}
+          <CardContent className="p-0">
+            <Table className="min-w-[820px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Action</TableHead>
+                  <TableHead>Permission</TableHead>
+                  <TableHead>Threshold</TableHead>
+                  <TableHead>Required Approvers</TableHead>
+                  <TableHead>Edit</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {policies.map((policy) => (
+                  <TableRow key={policy.id}>
+                    <TableCell className="font-semibold text-ink">{policy.action}</TableCell>
+                    <TableCell className="font-mono text-xs text-subtle">
+                      {policy.permission}
+                    </TableCell>
+                    <TableCell className="tabular">
+                      {editingId === policy.id ? (
+                        <Input
+                          type="number"
+                          className="h-9 w-32"
+                          placeholder="Always"
+                          value={draftThreshold}
+                          onChange={(e) => setDraftThreshold(e.target.value)}
+                          autoFocus
+                        />
+                      ) : policy.thresholdNaira === null ? (
+                        <span className="text-subtle">Every request</span>
+                      ) : (
+                        `Above ${naira(policy.thresholdNaira)}`
+                      )}
+                    </TableCell>
+                    <TableCell className="flex flex-wrap gap-1.5">
+                      {policy.requiredApprovers.map((a) => (
+                        <Badge key={a} tone="brand">
+                          {a}
+                        </Badge>
+                      ))}
+                    </TableCell>
+                    <TableCell>
+                      {editingId === policy.id ? (
+                        <div className="flex gap-2">
+                          <Button variant="primary" size="sm" onClick={() => saveThreshold(policy)}>
+                            Save
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setEditingId(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!mayConfigure}
+                          title={mayConfigure ? undefined : "Requires the policy.configure permission."}
+                          onClick={() => startEdit(policy)}
+                        >
+                          <Pencil className="size-3.5" />
+                          Edit
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>

@@ -6,6 +6,7 @@ import { RefreshCw, XCircle } from "lucide-react"
 import { maskAccount, naira, relativeTime, shortDate } from "@/lib/format"
 import { APP_NOW } from "@/lib/clock"
 import { MANDATES } from "@/lib/data/operations"
+import { organisationIdForCustomer } from "@/lib/data/loans"
 import { DEFAULT_POLICY } from "@/lib/domain/policy"
 import { can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
@@ -32,6 +33,7 @@ import { Tabs, type TabItem } from "@/components/ui/tabs"
 import { Sheet, SheetContent, DetailRow, DetailSection } from "@/components/ui/sheet"
 import { EmptyState } from "@/components/shared/empty-state"
 import { QueueToolbar } from "@/components/shared/queue-toolbar"
+import { OrgScopeSelector } from "@/components/shared/org-scope-selector"
 import {
   MandateStatusPill,
   RailBadge,
@@ -73,6 +75,7 @@ export function MandateModule({
 
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
+  const [org, setOrg] = React.useState("all")
   const [selected, setSelected] = React.useState<Mandate | null>(null)
 
   function updateMandate(updated: Mandate) {
@@ -80,18 +83,26 @@ export function MandateModule({
     setSelected(updated)
   }
 
+  const scoped = React.useMemo(
+    () =>
+      org === "all"
+        ? source
+        : source.filter((m) => organisationIdForCustomer(m.customerId) === org),
+    [source, org]
+  )
+
   const tabItems: TabItem[] = FILTERS.map((f) => ({
     value: f.value,
     label: f.label,
     count: f.states
-      ? source.filter((m) => f.states!.includes(m.status)).length
-      : source.length,
+      ? scoped.filter((m) => f.states!.includes(m.status)).length
+      : scoped.length,
   }))
 
   const rows = React.useMemo(() => {
     const filter = FILTERS.find((f) => f.value === tab)
     const q = query.trim().toLowerCase()
-    return source
+    return scoped
       .filter((m) => !filter?.states || filter.states.includes(m.status))
       .filter(
         (m) =>
@@ -101,7 +112,7 @@ export function MandateModule({
             .toLowerCase()
             .includes(q)
       )
-  }, [source, tab, query])
+  }, [scoped, tab, query])
 
   return (
     <>
@@ -110,7 +121,9 @@ export function MandateModule({
           value={query}
           onValueChange={setQuery}
           placeholder="Search borrower, mandate reference, account…"
-        />
+        >
+          <OrgScopeSelector value={org} onValueChange={setOrg} />
+        </QueueToolbar>
 
         <Tabs items={tabItems} value={tab} onValueChange={setTab} className="mt-6" />
 

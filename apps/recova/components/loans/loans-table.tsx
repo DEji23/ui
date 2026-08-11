@@ -19,6 +19,7 @@ import {
 import { Tabs, type TabItem } from "@/components/ui/tabs"
 import { EmptyState } from "@/components/shared/empty-state"
 import { QueueToolbar } from "@/components/shared/queue-toolbar"
+import { OrgScopeSelector } from "@/components/shared/org-scope-selector"
 
 type Tone = "neutral" | "success" | "warning" | "error" | "info" | "purple" | "brand"
 
@@ -46,6 +47,7 @@ const FILTERS: Array<{ value: string; label: string; states?: LoanState[] }> = [
 export function LoansTable() {
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
+  const [org, setOrg] = React.useState("all")
 
   const enriched = React.useMemo(
     () =>
@@ -56,18 +58,23 @@ export function LoansTable() {
     []
   )
 
+  const scoped = React.useMemo(
+    () => (org === "all" ? enriched : enriched.filter((e) => e.loan.organisationId === org)),
+    [enriched, org]
+  )
+
   const tabItems: TabItem[] = FILTERS.map((f) => ({
     value: f.value,
     label: f.label,
     count: f.states
-      ? enriched.filter((e) => f.states!.includes(e.loan.state)).length
-      : enriched.length,
+      ? scoped.filter((e) => f.states!.includes(e.loan.state)).length
+      : scoped.length,
   }))
 
   const rows = React.useMemo(() => {
     const filter = FILTERS.find((f) => f.value === tab)
     const q = query.trim().toLowerCase()
-    return enriched
+    return scoped
       .filter((e) => !filter?.states || filter.states.includes(e.loan.state))
       .filter(
         (e) =>
@@ -77,7 +84,7 @@ export function LoansTable() {
             .toLowerCase()
             .includes(q)
       )
-  }, [enriched, tab, query])
+  }, [scoped, tab, query])
 
   return (
     <Card className="p-6">
@@ -85,7 +92,9 @@ export function LoansTable() {
         value={query}
         onValueChange={setQuery}
         placeholder="Search loan ID, borrower, product…"
-      />
+      >
+        <OrgScopeSelector value={org} onValueChange={setOrg} />
+      </QueueToolbar>
       <Tabs items={tabItems} value={tab} onValueChange={setTab} className="mt-6" />
 
       {rows.length === 0 ? (

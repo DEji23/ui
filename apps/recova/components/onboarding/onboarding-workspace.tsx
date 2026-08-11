@@ -69,6 +69,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs } from "@/components/ui/tabs"
+import { GuidedBorrowerTestCard } from "@/components/onboarding/guided-borrower-test"
 
 /**
  * Onboarding workspace — rebuilt phase-for-phase from the
@@ -205,6 +206,8 @@ function ExternalJourney({
           mayApprove={mayApprove}
         />
       </div>
+
+      <GuidedBorrowerTestCard orgName={org.tradingName} visible={advancedThrough > 5} />
 
       <ProductionApprovalCard
         org={org}

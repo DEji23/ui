@@ -16,6 +16,8 @@ import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Input, Label, Select } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -184,6 +186,7 @@ function DisputeDetailSheet({
   onUpdate: (updated: Dispute) => void
 }) {
   const [reasonOpen, setReasonOpen] = React.useState<"approve" | "reject" | null>(null)
+  const [partialOpen, setPartialOpen] = React.useState(false)
   const [result, setResult] = React.useState<{ title: string; message: string } | null>(
     null
   )
@@ -222,6 +225,16 @@ function DisputeDetailSheet({
     })
   }
 
+  function handlePartialRefundConfirm(amount: number, reasonCode: string) {
+    if (!dispute) return
+    onUpdate({ ...dispute, status: "REFUNDED" })
+    setPartialOpen(false)
+    setResult({
+      title: "Partial refund approved",
+      message: `${naira(amount)} of ${naira(dispute.amount)} will be refunded against ${dispute.transactionId} — the remainder of the debit stands. Reason logged as ${reasonCode}, requiring maker-checker countersignature before settlement.`,
+    })
+  }
+
   return (
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -229,48 +242,67 @@ function DisputeDetailSheet({
         title="Dispute Case"
         description={`${dispute.id} · ${dispute.borrowerName}`}
         footer={
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              variant="soft"
-              size="lg"
-              className="sm:flex-1"
-              disabled={!mayRefund || !active}
-              title={
-                mayRefund
-                  ? undefined
-                  : "Refund approval is a Finance permission — separation of duties."
-              }
-              onClick={() => setReasonOpen("approve")}
-            >
-              <Undo2 />
-              Approve Refund
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="sm:flex-1"
-              disabled={!mayResolve || !active}
-              onClick={() => setReasonOpen("reject")}
-            >
-              <CircleSlash />
-              Reject
-            </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              className="sm:flex-1"
-              disabled={!mayResolve || !active || !evidenceComplete}
-              title={
-                evidenceComplete
-                  ? undefined
-                  : "Evidence bundle is incomplete — resolve only on a full record."
-              }
-              onClick={handleUphold}
-            >
-              <Check />
-              Uphold Debit
-            </Button>
-          </div>
+          <>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                variant="soft"
+                size="lg"
+                className="sm:flex-1"
+                disabled={!mayRefund || !active}
+                title={
+                  mayRefund
+                    ? undefined
+                    : "Refund approval is a Finance permission — separation of duties."
+                }
+                onClick={() => setReasonOpen("approve")}
+              >
+                <Undo2 />
+                Approve Full Refund
+              </Button>
+              <Button
+                variant="soft"
+                size="lg"
+                className="sm:flex-1"
+                disabled={!mayRefund || !active}
+                title={
+                  mayRefund
+                    ? undefined
+                    : "Refund approval is a Finance permission — separation of duties."
+                }
+                onClick={() => setPartialOpen(true)}
+              >
+                <Undo2 />
+                Partial Refund
+              </Button>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                variant="outline"
+                size="lg"
+                className="sm:flex-1"
+                disabled={!mayResolve || !active}
+                onClick={() => setReasonOpen("reject")}
+              >
+                <CircleSlash />
+                Reject
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                className="sm:flex-1"
+                disabled={!mayResolve || !active || !evidenceComplete}
+                title={
+                  evidenceComplete
+                    ? undefined
+                    : "Evidence bundle is incomplete — resolve only on a full record."
+                }
+                onClick={handleUphold}
+              >
+                <Check />
+                Uphold Debit
+              </Button>
+            </div>
+          </>
         }
       >
         <div className="flex flex-col gap-4">
@@ -352,6 +384,13 @@ function DisputeDetailSheet({
         onConfirm={handleReasonConfirm}
       />
 
+      <PartialRefundDialog
+        open={partialOpen}
+        onOpenChange={setPartialOpen}
+        maxAmount={dispute.amount}
+        onConfirm={handlePartialRefundConfirm}
+      />
+
       <ResultDialog
         open={result !== null}
         onOpenChange={(o) => !o && setResult(null)}
@@ -359,5 +398,83 @@ function DisputeDetailSheet({
         message={result?.message ?? ""}
       />
     </>
+  )
+}
+
+/** Case B — partial error: refund only the delta, the rest of the debit stands. */
+function PartialRefundDialog({
+  open,
+  onOpenChange,
+  maxAmount,
+  onConfirm,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  maxAmount: number
+  onConfirm: (amount: number, reasonCode: string) => void
+}) {
+  const [amount, setAmount] = React.useState(String(Math.round(maxAmount / 2)))
+  const [reasonCode, setReasonCode] = React.useState("")
+
+  React.useEffect(() => {
+    if (open) {
+      setAmount(String(Math.round(maxAmount / 2)))
+      setReasonCode("")
+    }
+  }, [open, maxAmount])
+
+  const numeric = Number(amount)
+  const valid = reasonCode !== "" && numeric > 0 && numeric < maxAmount
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        title="Partial Refund"
+        description="Case B — partial error. Only the delta is refunded; the rest of the debit stands."
+        footer={
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button variant="outline" size="lg" className="sm:flex-1" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              className="sm:flex-1"
+              disabled={!valid}
+              onClick={() => onConfirm(numeric, reasonCode)}
+            >
+              Approve Partial Refund
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="pr-amount">Refund amount (max {naira(maxAmount)})</Label>
+            <Input
+              id="pr-amount"
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            {numeric >= maxAmount ? (
+              <p className="text-xs text-error-600">
+                A refund equal to the full amount is a full refund — use Approve Full Refund
+                instead.
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="pr-reason">Reason code *</Label>
+            <Select id="pr-reason" value={reasonCode} onChange={(e) => setReasonCode(e.target.value)}>
+              <option value="">Select a reason</option>
+              <option value="INCORRECT_AMOUNT">Incorrect amount charged</option>
+              <option value="PARTIAL_DUPLICATE">Partial duplicate charge</option>
+              <option value="FEE_MISAPPLIED">Fee misapplied</option>
+            </Select>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
