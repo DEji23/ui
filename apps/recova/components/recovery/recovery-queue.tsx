@@ -33,15 +33,21 @@ const FILTERS: Array<{ value: string; label: string; states?: RecoveryState[] }>
 ]
 
 export function RecoveryQueue({
-  cases = RECOVERY_CASES,
+  cases: initialCases = RECOVERY_CASES,
   emptyTitle = "No recovery case found.",
 }: {
   cases?: RecoveryCase[]
   emptyTitle?: string
 }) {
+  const [cases, setCases] = React.useState<RecoveryCase[]>(initialCases)
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
   const [selected, setSelected] = React.useState<RecoveryCase | null>(null)
+
+  function updateCase(updated: RecoveryCase) {
+    setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+    setSelected(updated)
+  }
 
   const tabItems: TabItem[] = React.useMemo(
     () =>
@@ -159,6 +165,7 @@ export function RecoveryQueue({
         onOpenChange={(open) => {
           if (!open) setSelected(null)
         }}
+        onUpdate={updateCase}
       />
     </>
   )

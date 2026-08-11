@@ -1,9 +1,9 @@
 import Link from "next/link"
-import { Download, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/shared/page-header"
 import { MandateModule } from "@/components/mandates/mandate-module"
+import { MandatePageActions } from "@/components/wizards/page-actions"
 
 export default function MandatesPage() {
   return (
@@ -16,14 +16,7 @@ export default function MandatesPage() {
             <Button variant="outline" className="h-12 px-5" asChild>
               <Link href="/mandate-setup">View Setup Requests</Link>
             </Button>
-            <Button variant="soft" className="h-12 px-5">
-              Export Records
-              <Download />
-            </Button>
-            <Button variant="primary" className="h-12 px-5">
-              Sync
-              <RefreshCw />
-            </Button>
+            <MandatePageActions showCreate={false} />
           </>
         }
       />

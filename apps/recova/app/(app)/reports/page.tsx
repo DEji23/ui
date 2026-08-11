@@ -8,7 +8,6 @@ import {
   aggregateUsage,
   costPerNairaRecovered,
 } from "@/lib/domain/billing"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
+import { GenerateReportButton, SpoolReportDownload } from "@/components/wizards/misc-page-actions"
 
 /**
  * Reporting + unit economics.
@@ -65,12 +65,7 @@ export default function ReportsPage() {
       <PageHeader
         title="Reports"
         description="Operational, financial and audit reporting with spool export."
-        actions={
-          <Button variant="primary" className="h-12 px-5">
-            Generate Report
-            <FileSpreadsheet />
-          </Button>
-        }
+        actions={<GenerateReportButton />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">
@@ -198,9 +193,10 @@ export default function ReportsPage() {
                         <p className="text-xs text-subtle">{report.cadence}</p>
                       </div>
                     </div>
-                    <Button variant="soft" size="sm">
-                      {report.format}
-                    </Button>
+                    <SpoolReportDownload
+                      name={report.name}
+                      format={report.format as "CSV" | "XLSX" | "ZIP"}
+                    />
                   </div>
                 )
               })}

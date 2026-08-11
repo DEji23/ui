@@ -28,6 +28,7 @@ import { Tabs, type TabItem } from "@/components/ui/tabs"
 import { Sheet, SheetContent, DetailRow, DetailSection } from "@/components/ui/sheet"
 import { EmptyState } from "@/components/shared/empty-state"
 import { QueueToolbar } from "@/components/shared/queue-toolbar"
+import { ReasonDialog, ResultDialog } from "@/components/queues/action-dialogs"
 
 type Tone = "neutral" | "success" | "warning" | "error" | "info" | "purple" | "brand"
 
@@ -54,32 +55,38 @@ const FILTERS: Array<{ value: string; label: string; states?: LegalStatus[] }> =
  * twice: on the recovery.override permission and on maker-checker approval.
  */
 export function LegalModule() {
+  const [cases, setCases] = React.useState<LegalCase[]>(LEGAL_CASES)
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
   const [selected, setSelected] = React.useState<LegalCase | null>(null)
+
+  function updateCase(updated: LegalCase) {
+    setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+    setSelected(updated)
+  }
 
   const tabItems: TabItem[] = FILTERS.map((f) => ({
     value: f.value,
     label: f.label,
     count: f.states
-      ? LEGAL_CASES.filter((c) => f.states!.includes(c.status)).length
-      : LEGAL_CASES.length,
+      ? cases.filter((c) => f.states!.includes(c.status)).length
+      : cases.length,
   }))
 
   const rows = React.useMemo(() => {
     const filter = FILTERS.find((f) => f.value === tab)
     const q = query.trim().toLowerCase()
-    return LEGAL_CASES.filter(
-      (c) => !filter?.states || filter.states.includes(c.status)
-    ).filter(
-      (c) =>
-        q === "" ||
-        [c.borrowerName, c.loanId, c.caseRef, c.counsel]
-          .join(" ")
-          .toLowerCase()
-          .includes(q)
-    )
-  }, [tab, query])
+    return cases
+      .filter((c) => !filter?.states || filter.states.includes(c.status))
+      .filter(
+        (c) =>
+          q === "" ||
+          [c.borrowerName, c.loanId, c.caseRef, c.counsel]
+            .join(" ")
+            .toLowerCase()
+            .includes(q)
+      )
+  }, [cases, tab, query])
 
   return (
     <>
@@ -154,6 +161,7 @@ export function LegalModule() {
         item={selected}
         open={selected !== null}
         onOpenChange={(open) => !open && setSelected(null)}
+        onUpdate={updateCase}
       />
     </>
   )
@@ -163,24 +171,51 @@ function LegalDetailSheet({
   item,
   open,
   onOpenChange,
+  onUpdate,
 }: {
   item: LegalCase | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onUpdate: (updated: LegalCase) => void
 }) {
+  const [writeOffOpen, setWriteOffOpen] = React.useState(false)
+  const [result, setResult] = React.useState<{ title: string; message: string } | null>(
+    null
+  )
+
   if (!item) return null
 
   const mayWriteOff = can(CURRENT_USER.role, "recovery.override")
   const needsChecker = requiresMakerChecker("recovery.override")
 
+  function handleExport() {
+    if (!item) return
+    setResult({
+      title: "Export queued",
+      message: `The case bundle for ${item.caseRef} — escalation audit, evidence and correspondence — has been queued for export. You'll be notified when it's ready to download.`,
+    })
+  }
+
+  function handleWriteOffConfirm(reasonCode: string) {
+    if (!item) return
+    onUpdate({ ...item, status: item.status === "PENDING_REVIEW" ? "UNDER_REVIEW" : item.status })
+    setResult({
+      title: needsChecker ? "Write-off submitted for approval" : "Loan written off",
+      message: needsChecker
+        ? `A write-off recommendation for ${item.caseRef} was submitted to Maker-Checker with reason ${reasonCode}. It takes effect once a second authoriser countersigns.`
+        : `${item.caseRef} has been written off. Reason logged as ${reasonCode}.`,
+    })
+  }
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         title="Legal Review"
         description={`${item.caseRef} · ${item.borrowerName}`}
         footer={
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button variant="soft" size="lg" className="sm:flex-1">
+            <Button variant="soft" size="lg" className="sm:flex-1" onClick={handleExport}>
               <FileText />
               Export Case Bundle
             </Button>
@@ -196,6 +231,7 @@ function LegalDetailSheet({
                     : undefined
                   : "Write-off requires the recovery.override permission."
               }
+              onClick={() => setWriteOffOpen(true)}
             >
               <ShieldAlert />
               Recommend Write Off
@@ -242,5 +278,22 @@ function LegalDetailSheet({
         </div>
       </SheetContent>
     </Sheet>
+
+      <ReasonDialog
+        open={writeOffOpen}
+        onOpenChange={setWriteOffOpen}
+        action={{ id: "write_off", label: "Recommend Write Off", permission: "recovery.override", requiresReason: true, tone: "danger" }}
+        category="write_off"
+        subject={`${item.caseRef} · ${item.borrowerName}`}
+        onConfirm={handleWriteOffConfirm}
+      />
+
+      <ResultDialog
+        open={result !== null}
+        onOpenChange={(o) => !o && setResult(null)}
+        title={result?.title ?? ""}
+        message={result?.message ?? ""}
+      />
+    </>
   )
 }

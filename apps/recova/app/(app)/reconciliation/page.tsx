@@ -1,11 +1,10 @@
-import { CheckCircle2, FileSpreadsheet, RefreshCw, Scale, TriangleAlert } from "lucide-react"
+import { CheckCircle2, Scale, TriangleAlert } from "lucide-react"
 
 import { naira, percent, relativeTime } from "@/lib/format"
 import { RECONCILIATION_EXCEPTIONS } from "@/lib/data/operations"
 import { SETTLEMENT_WINDOW_HOURS } from "@/lib/domain/reconciliation"
 import { RAIL_LABEL, RAILS } from "@/lib/domain/types"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -18,6 +17,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
 import { ReconciliationPill } from "@/components/shared/status-pill"
+import { ReconciliationPageActions } from "@/components/wizards/misc-page-actions"
 
 /**
  * Reconciliation engine view.
@@ -34,18 +34,7 @@ export default function ReconciliationPage() {
       <PageHeader
         title="Reconciliation"
         description="Match internal ledger entries against NDD, Remita and EasyPay settlement files."
-        actions={
-          <>
-            <Button variant="soft" className="h-12 px-5">
-              Export Report
-              <FileSpreadsheet />
-            </Button>
-            <Button variant="primary" className="h-12 px-5">
-              Run Reconciliation
-              <RefreshCw />
-            </Button>
-          </>
-        }
+        actions={<ReconciliationPageActions />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">

@@ -4,6 +4,7 @@ import * as React from "react"
 import { RefreshCw, XCircle } from "lucide-react"
 
 import { maskAccount, naira, relativeTime, shortDate } from "@/lib/format"
+import { APP_NOW } from "@/lib/clock"
 import { MANDATES } from "@/lib/data/operations"
 import { DEFAULT_POLICY } from "@/lib/domain/policy"
 import { can } from "@/lib/domain/rbac"
@@ -36,6 +37,7 @@ import {
   RailBadge,
   ValidationStatusPill,
 } from "@/components/shared/status-pill"
+import { ReasonDialog, ResultDialog } from "@/components/queues/action-dialogs"
 
 const FILTERS: Array<{ value: string; label: string; states?: MandateStatus[] }> = [
   { value: "all", label: "All" },
@@ -63,14 +65,20 @@ export function MandateModule({
   rail?: Rail
   emptyTitle?: string
 }) {
+  const [mandates, setMandates] = React.useState<Mandate[]>(MANDATES)
   const source = React.useMemo(
-    () => (rail ? MANDATES.filter((m) => m.provider === rail) : MANDATES),
-    [rail]
+    () => (rail ? mandates.filter((m) => m.provider === rail) : mandates),
+    [mandates, rail]
   )
 
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
   const [selected, setSelected] = React.useState<Mandate | null>(null)
+
+  function updateMandate(updated: Mandate) {
+    setMandates((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+    setSelected(updated)
+  }
 
   const tabItems: TabItem[] = FILTERS.map((f) => ({
     value: f.value,
@@ -166,6 +174,7 @@ export function MandateModule({
         mandate={selected}
         open={selected !== null}
         onOpenChange={(open) => !open && setSelected(null)}
+        onUpdate={updateMandate}
       />
     </>
   )
@@ -175,11 +184,18 @@ function MandateDetailSheet({
   mandate,
   open,
   onOpenChange,
+  onUpdate,
 }: {
   mandate: Mandate | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onUpdate: (updated: Mandate) => void
 }) {
+  const [cancelOpen, setCancelOpen] = React.useState(false)
+  const [result, setResult] = React.useState<{ title: string; message: string } | null>(
+    null
+  )
+
   if (!mandate) return null
 
   const mayRetry = can(CURRENT_USER.role, "mandate.retry")
@@ -192,7 +208,35 @@ function MandateDetailSheet({
     daysToExpiry <=
     DEFAULT_POLICY.mandate.mandateExpiryDays - DEFAULT_POLICY.mandate.autoRefreshAfterDays
 
+  function handleCancelConfirm(reasonCode: string) {
+    if (!mandate) return
+    onUpdate({ ...mandate, status: "REVOKED" })
+    setResult({
+      title: "Mandate cancelled",
+      message: `${mandate.reference} has been revoked. Reason logged as ${reasonCode}. The account is removed from the debit pool until a new mandate is created.`,
+    })
+  }
+
+  function handleRetry() {
+    if (!mandate) return
+    const failed = mandate.retryCount + 1 >= 2
+    onUpdate({
+      ...mandate,
+      status: failed ? "FAILED" : "PENDING_APPROVAL",
+      retryCount: mandate.retryCount + 1,
+      lastCheckedAt: APP_NOW.toISOString(),
+      failureReason: failed ? mandate.failureReason ?? "ACCOUNT_DORMANT" : null,
+    })
+    setResult({
+      title: failed ? "Retry exhausted" : "Mandate setup retried",
+      message: failed
+        ? `${mandate.reference} has used both permitted retries within 24h. Recovery will fall back to the next ranked account or EasyPay.`
+        : `A new mandate request was submitted to ${mandate.bankName}. Status is Pending Approval — the ₦50 validation transfer is required within ${DEFAULT_POLICY.mandate.validationWindowHours}h.`,
+    })
+  }
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         title="Mandate Details"
@@ -200,9 +244,15 @@ function MandateDetailSheet({
         footer={
           <div className="flex flex-col gap-3 sm:flex-row">
             {mayCancel ? (
-              <Button variant="dangerSoft" size="lg" className="sm:flex-1">
+              <Button
+                variant="dangerSoft"
+                size="lg"
+                className="sm:flex-1"
+                disabled={mandate.status === "REVOKED"}
+                onClick={() => setCancelOpen(true)}
+              >
                 <XCircle />
-                Cancel Mandate
+                {mandate.status === "REVOKED" ? "Mandate Revoked" : "Cancel Mandate"}
               </Button>
             ) : null}
             <Button
@@ -210,6 +260,7 @@ function MandateDetailSheet({
               size="lg"
               className="sm:flex-1"
               disabled={!mayRetry || mandate.status === "ACTIVE"}
+              onClick={handleRetry}
             >
               <RefreshCw />
               {mandate.status === "ACTIVE" ? "Mandate Active" : "Retry Mandate Setup"}
@@ -287,5 +338,28 @@ function MandateDetailSheet({
         </div>
       </SheetContent>
     </Sheet>
+
+      <ReasonDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        action={{
+          id: "cancel_mandate",
+          label: "Cancel Mandate",
+          permission: "mandate.cancel",
+          requiresReason: true,
+          tone: "danger",
+        }}
+        category="mandate_cancel"
+        subject={`${mandate.reference} · ${mandate.customerName}`}
+        onConfirm={handleCancelConfirm}
+      />
+
+      <ResultDialog
+        open={result !== null}
+        onOpenChange={(o) => !o && setResult(null)}
+        title={result?.title ?? ""}
+        message={result?.message ?? ""}
+      />
+    </>
   )
 }

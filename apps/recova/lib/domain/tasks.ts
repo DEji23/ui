@@ -179,6 +179,18 @@ export const REASON_CODES = {
     { value: "DUPLICATE_DEBIT", label: "Duplicate debit" },
     { value: "OVERPAYMENT", label: "Overpayment" },
   ],
+  mandate_cancel: [
+    { value: "CUSTOMER_REQUEST", label: "Customer request" },
+    { value: "DUPLICATE_MANDATE", label: "Duplicate mandate" },
+    { value: "ACCOUNT_CLOSED", label: "Account closed" },
+    { value: "FRAUD_SUSPICION", label: "Fraud suspicion" },
+  ],
+  write_off: [
+    { value: "RECOVERY_EXHAUSTED", label: "Recovery options exhausted" },
+    { value: "BORROWER_DECEASED", label: "Borrower deceased" },
+    { value: "UNCOLLECTIBLE", label: "Deemed uncollectible" },
+    { value: "LEGAL_SETTLEMENT", label: "Legal settlement" },
+  ],
 } as const
 
 export type ReasonCategory = keyof typeof REASON_CODES

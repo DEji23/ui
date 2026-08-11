@@ -29,6 +29,7 @@ import { Sheet, SheetContent, DetailRow, DetailSection } from "@/components/ui/s
 import { EmptyState } from "@/components/shared/empty-state"
 import { QueueToolbar } from "@/components/shared/queue-toolbar"
 import { DisputeStatusPill } from "@/components/shared/status-pill"
+import { ReasonDialog, ResultDialog } from "@/components/queues/action-dialogs"
 
 const FILTERS: Array<{ value: string; label: string; states?: DisputeStatus[] }> = [
   { value: "all", label: "All" },
@@ -53,22 +54,28 @@ const EVIDENCE_LABELS: Array<[keyof Dispute["evidence"], string]> = [
  * bundle is what turns a defensible debit into a regulatory finding.
  */
 export function DisputesModule() {
+  const [disputes, setDisputes] = React.useState<Dispute[]>(DISPUTES)
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
   const [selected, setSelected] = React.useState<Dispute | null>(null)
+
+  function updateDispute(updated: Dispute) {
+    setDisputes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
+    setSelected(updated)
+  }
 
   const tabItems: TabItem[] = FILTERS.map((f) => ({
     value: f.value,
     label: f.label,
     count: f.states
-      ? DISPUTES.filter((d) => f.states!.includes(d.status)).length
-      : DISPUTES.length,
+      ? disputes.filter((d) => f.states!.includes(d.status)).length
+      : disputes.length,
   }))
 
   const rows = React.useMemo(() => {
     const filter = FILTERS.find((f) => f.value === tab)
     const q = query.trim().toLowerCase()
-    return DISPUTES.filter((d) => !filter?.states || filter.states.includes(d.status)).filter(
+    return disputes.filter((d) => !filter?.states || filter.states.includes(d.status)).filter(
       (d) =>
         q === "" ||
         [d.id, d.loanId, d.borrowerName, d.transactionId]
@@ -76,7 +83,7 @@ export function DisputesModule() {
           .toLowerCase()
           .includes(q)
     )
-  }, [tab, query])
+  }, [disputes, tab, query])
 
   return (
     <>
@@ -159,6 +166,7 @@ export function DisputesModule() {
         dispute={selected}
         open={selected !== null}
         onOpenChange={(open) => !open && setSelected(null)}
+        onUpdate={updateDispute}
       />
     </>
   )
@@ -168,11 +176,18 @@ function DisputeDetailSheet({
   dispute,
   open,
   onOpenChange,
+  onUpdate,
 }: {
   dispute: Dispute | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onUpdate: (updated: Dispute) => void
 }) {
+  const [reasonOpen, setReasonOpen] = React.useState<"approve" | "reject" | null>(null)
+  const [result, setResult] = React.useState<{ title: string; message: string } | null>(
+    null
+  )
+
   if (!dispute) return null
 
   const mayResolve = can(CURRENT_USER.role, "dispute.resolve")
@@ -181,7 +196,34 @@ function DisputeDetailSheet({
   const active = dispute.status === "OPEN" || dispute.status === "INVESTIGATING" ||
     dispute.status === "AWAITING_EVIDENCE"
 
+  function handleReasonConfirm(reasonCode: string) {
+    if (!dispute) return
+    if (reasonOpen === "approve") {
+      onUpdate({ ...dispute, status: "REFUNDED" })
+      setResult({
+        title: "Refund approved",
+        message: `${naira(dispute.amount)} will be refunded against ${dispute.transactionId}. Reason logged as ${reasonCode}, requiring maker-checker countersignature before settlement.`,
+      })
+    } else if (reasonOpen === "reject") {
+      onUpdate({ ...dispute, status: "REJECTED" })
+      setResult({
+        title: "Dispute rejected",
+        message: `${dispute.id} has been rejected. Reason logged as ${reasonCode}. The original debit stands and recovery may resume.`,
+      })
+    }
+  }
+
+  function handleUphold() {
+    if (!dispute) return
+    onUpdate({ ...dispute, status: "UPHELD" })
+    setResult({
+      title: "Debit upheld",
+      message: `${dispute.id} is resolved in the bank's favour. The debit on ${dispute.transactionId} stands and recovery resumes for ${dispute.loanId}.`,
+    })
+  }
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         title="Dispute Case"
@@ -198,6 +240,7 @@ function DisputeDetailSheet({
                   ? undefined
                   : "Refund approval is a Finance permission — separation of duties."
               }
+              onClick={() => setReasonOpen("approve")}
             >
               <Undo2 />
               Approve Refund
@@ -207,6 +250,7 @@ function DisputeDetailSheet({
               size="lg"
               className="sm:flex-1"
               disabled={!mayResolve || !active}
+              onClick={() => setReasonOpen("reject")}
             >
               <CircleSlash />
               Reject
@@ -221,6 +265,7 @@ function DisputeDetailSheet({
                   ? undefined
                   : "Evidence bundle is incomplete — resolve only on a full record."
               }
+              onClick={handleUphold}
             >
               <Check />
               Uphold Debit
@@ -291,5 +336,28 @@ function DisputeDetailSheet({
         </div>
       </SheetContent>
     </Sheet>
+
+      <ReasonDialog
+        open={reasonOpen !== null}
+        onOpenChange={(o) => !o && setReasonOpen(null)}
+        action={
+          reasonOpen === "approve"
+            ? { id: "approve_refund", label: "Approve Refund", permission: "refund.approve", requiresReason: true, tone: "soft" }
+            : reasonOpen === "reject"
+              ? { id: "reject", label: "Reject Dispute", permission: "dispute.resolve", requiresReason: true, tone: "danger" }
+              : null
+        }
+        category="refund"
+        subject={`${dispute.id} · ${dispute.borrowerName}`}
+        onConfirm={handleReasonConfirm}
+      />
+
+      <ResultDialog
+        open={result !== null}
+        onOpenChange={(o) => !o && setResult(null)}
+        title={result?.title ?? ""}
+        message={result?.message ?? ""}
+      />
+    </>
   )
 }

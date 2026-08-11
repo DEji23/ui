@@ -1,13 +1,11 @@
-import { Mail, MessageSquare, MonitorSmartphone, Save } from "lucide-react"
+import { Mail, MessageSquare, MonitorSmartphone } from "lucide-react"
 
 import { NOTIFICATION_TEMPLATES } from "@/lib/data/notifications"
-import { can } from "@/lib/domain/rbac"
-import { CURRENT_USER } from "@/lib/data/session"
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
+import { NotificationRulesPageActions } from "@/components/wizards/misc-page-actions"
 
 const CHANNEL_ICON = {
   SMS: MessageSquare,
@@ -22,19 +20,12 @@ const CHANNEL_ICON = {
  * rather than hidden behind an edit modal.
  */
 export default function NotificationRulesPage() {
-  const mayEdit = can(CURRENT_USER.role, "policy.configure")
-
   return (
     <>
       <PageHeader
         title="Notification Rules"
         description="Borrower and operator messaging across SMS, email and dashboard channels."
-        actions={
-          <Button variant="primary" className="h-12 px-5" disabled={!mayEdit}>
-            Save Changes
-            <Save />
-          </Button>
-        }
+        actions={<NotificationRulesPageActions />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">

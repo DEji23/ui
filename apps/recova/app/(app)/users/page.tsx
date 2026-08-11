@@ -1,10 +1,7 @@
-import { UserPlus } from "lucide-react"
-
 import { ROLES, ROLE_LABEL, ROLE_PERMISSIONS, type Role } from "@/lib/domain/rbac"
 import { STATE_OWNER, ASSIGNMENT_RULES } from "@/lib/domain/rbac"
 import { RECOVERY_STATE_LABEL, type RecoveryState } from "@/lib/domain/types"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -15,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
+import { UsersPageActions } from "@/components/wizards/misc-page-actions"
 
 /**
  * User management + the live RBAC matrix.
@@ -48,12 +46,7 @@ export default function UsersPage() {
       <PageHeader
         title="User Management"
         description="Roles, permissions and workflow ownership across the recovery lifecycle."
-        actions={
-          <Button variant="primary" className="h-12 px-5">
-            Invite User
-            <UserPlus />
-          </Button>
-        }
+        actions={<UsersPageActions />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">

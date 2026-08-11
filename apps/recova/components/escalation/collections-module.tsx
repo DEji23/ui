@@ -30,6 +30,7 @@ import { Tabs, type TabItem } from "@/components/ui/tabs"
 import { Sheet, SheetContent, DetailRow, DetailSection } from "@/components/ui/sheet"
 import { EmptyState } from "@/components/shared/empty-state"
 import { QueueToolbar } from "@/components/shared/queue-toolbar"
+import { AssignDialog, ReasonDialog, ResultDialog } from "@/components/queues/action-dialogs"
 
 type Tone = "neutral" | "success" | "warning" | "error" | "info" | "purple" | "brand"
 
@@ -54,32 +55,38 @@ const FILTERS: Array<{ value: string; label: string; states?: CollectionsStatus[
  * threshold, so the button is gated on the policy rather than hard-coded.
  */
 export function CollectionsModule() {
+  const [cases, setCases] = React.useState<CollectionsCase[]>(COLLECTIONS_CASES)
   const [tab, setTab] = React.useState("all")
   const [query, setQuery] = React.useState("")
   const [selected, setSelected] = React.useState<CollectionsCase | null>(null)
+
+  function updateCase(updated: CollectionsCase) {
+    setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+    setSelected(updated)
+  }
 
   const tabItems: TabItem[] = FILTERS.map((f) => ({
     value: f.value,
     label: f.label,
     count: f.states
-      ? COLLECTIONS_CASES.filter((c) => f.states!.includes(c.status)).length
-      : COLLECTIONS_CASES.length,
+      ? cases.filter((c) => f.states!.includes(c.status)).length
+      : cases.length,
   }))
 
   const rows = React.useMemo(() => {
     const filter = FILTERS.find((f) => f.value === tab)
     const q = query.trim().toLowerCase()
-    return COLLECTIONS_CASES.filter(
-      (c) => !filter?.states || filter.states.includes(c.status)
-    ).filter(
-      (c) =>
-        q === "" ||
-        [c.borrowerName, c.loanId, c.reference, c.agent]
-          .join(" ")
-          .toLowerCase()
-          .includes(q)
-    )
-  }, [tab, query])
+    return cases
+      .filter((c) => !filter?.states || filter.states.includes(c.status))
+      .filter(
+        (c) =>
+          q === "" ||
+          [c.borrowerName, c.loanId, c.reference, c.agent]
+            .join(" ")
+            .toLowerCase()
+            .includes(q)
+      )
+  }, [cases, tab, query])
 
   return (
     <>
@@ -155,6 +162,7 @@ export function CollectionsModule() {
         item={selected}
         open={selected !== null}
         onOpenChange={(open) => !open && setSelected(null)}
+        onUpdate={updateCase}
       />
     </>
   )
@@ -164,18 +172,54 @@ function CollectionsDetailSheet({
   item,
   open,
   onOpenChange,
+  onUpdate,
 }: {
   item: CollectionsCase | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onUpdate: (updated: CollectionsCase) => void
 }) {
+  const [escalateOpen, setEscalateOpen] = React.useState(false)
+  const [assignOpen, setAssignOpen] = React.useState(false)
+  const [result, setResult] = React.useState<{ title: string; message: string } | null>(
+    null
+  )
+
   if (!item) return null
 
   const mayAssign = can(CURRENT_USER.role, "collections.assign")
   const mayEscalate = can(CURRENT_USER.role, "legal.escalate")
   const planUnlocked = item.failedCycles >= DEFAULT_POLICY.escalation.cyclesToCollections
 
+  function handleOfferPlan() {
+    if (!item) return
+    onUpdate({ ...item, paymentPlanOffered: true, status: "IN_PROGRESS" })
+    setResult({
+      title: "Payment plan offered",
+      message: `A structured repayment plan has been offered to ${item.borrowerName}. The case moves to In Progress pending the borrower's acceptance.`,
+    })
+  }
+
+  function handleEscalateConfirm(reasonCode: string) {
+    if (!item) return
+    onUpdate({ ...item, status: "ESCALATED_TO_LEGAL" })
+    setResult({
+      title: "Escalated to legal",
+      message: `${item.reference} has been escalated to Legal Review. Reason logged as ${reasonCode}. No further automated recovery attempts will run on ${item.loanId}.`,
+    })
+  }
+
+  function handleAssignConfirm(agent: string) {
+    if (!item) return
+    onUpdate({ ...item, agent })
+    setResult({
+      title: "Case reassigned",
+      message: `${item.reference} is now assigned to ${agent}.`,
+    })
+  }
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         title="Collections Case"
@@ -192,6 +236,7 @@ function CollectionsDetailSheet({
                   ? undefined
                   : `Payment plans unlock at ${DEFAULT_POLICY.escalation.cyclesToCollections} failed cycles.`
               }
+              onClick={handleOfferPlan}
             >
               <HandCoins />
               Offer Payment Plan
@@ -206,6 +251,7 @@ function CollectionsDetailSheet({
                   ? undefined
                   : "Escalating to legal requires the legal.escalate permission."
               }
+              onClick={() => setEscalateOpen(true)}
             >
               Escalate to Legal
               <ArrowRight />
@@ -257,12 +303,43 @@ function CollectionsDetailSheet({
                 ? " You can reassign this case."
                 : " Reassignment requires the collections.assign permission."}
             </p>
-            <Button variant="outline" size="md" block disabled={!mayAssign}>
+            <Button
+              variant="outline"
+              size="md"
+              block
+              disabled={!mayAssign}
+              onClick={() => setAssignOpen(true)}
+            >
               Reassign Case
             </Button>
           </DetailSection>
         </div>
       </SheetContent>
     </Sheet>
+
+      <ReasonDialog
+        open={escalateOpen}
+        onOpenChange={setEscalateOpen}
+        action={{ id: "escalate_legal", label: "Escalate to Legal", permission: "legal.escalate", requiresReason: true, tone: "primary" }}
+        category="escalate"
+        subject={`${item.reference} · ${item.borrowerName}`}
+        onConfirm={handleEscalateConfirm}
+      />
+
+      <AssignDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        subject={`${item.reference} · ${item.borrowerName}`}
+        currentAssignee={item.agent}
+        onConfirm={handleAssignConfirm}
+      />
+
+      <ResultDialog
+        open={result !== null}
+        onOpenChange={(o) => !o && setResult(null)}
+        title={result?.title ?? ""}
+        message={result?.message ?? ""}
+      />
+    </>
   )
 }

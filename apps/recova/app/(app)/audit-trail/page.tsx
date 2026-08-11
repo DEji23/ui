@@ -1,10 +1,9 @@
-import { Download, Lock } from "lucide-react"
+import { Lock } from "lucide-react"
 
 import { dateTime } from "@/lib/format"
 import { AUDIT_EVENTS } from "@/lib/data/operations"
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
   Table,
@@ -15,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
+import { AuditTrailPageActions } from "@/components/wizards/misc-page-actions"
 
 const CATEGORY_TONE = {
   RECOVERY: "brand",
@@ -36,12 +36,7 @@ export default function AuditTrailPage() {
       <PageHeader
         title="Audit Trail"
         description="Immutable, exportable record of every consent, mandate, debit, retry, escalation and override."
-        actions={
-          <Button variant="soft" className="h-12 px-5">
-            Export Log
-            <Download />
-          </Button>
-        }
+        actions={<AuditTrailPageActions />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">

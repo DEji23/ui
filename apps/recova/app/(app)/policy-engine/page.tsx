@@ -1,15 +1,16 @@
-import { CircleCheck, Save, TriangleAlert } from "lucide-react"
+import { CircleCheck, TriangleAlert } from "lucide-react"
 
 import { naira, shortDate } from "@/lib/format"
 import { DEFAULT_POLICY, validatePolicy } from "@/lib/domain/policy"
 import { RAIL_LABEL } from "@/lib/domain/types"
 import { can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
+
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
+import { PolicyEnginePageActions } from "@/components/wizards/misc-page-actions"
 
 /**
  * Policy control panel.
@@ -41,12 +42,7 @@ export default function PolicyEnginePage() {
       <PageHeader
         title="Policy Engine"
         description="Recovery behaviour is configuration, not code. Tune retries, mandates and escalation per portfolio."
-        actions={
-          <Button variant="primary" className="h-12 px-5" disabled={!mayEdit}>
-            Save Policy
-            <Save />
-          </Button>
-        }
+        actions={<PolicyEnginePageActions />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">

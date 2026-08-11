@@ -1,12 +1,9 @@
-import { KeyRound, Plus, Webhook } from "lucide-react"
+import { KeyRound, Webhook } from "lucide-react"
 
 import { relativeTime } from "@/lib/format"
 import { WEBHOOK_EVENTS } from "@/lib/data/notifications"
-import { can } from "@/lib/domain/rbac"
-import { CURRENT_USER } from "@/lib/data/session"
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -17,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
+import { ApiWebhooksPageActions } from "@/components/wizards/misc-page-actions"
 
 /** Developer platform — API keys, webhook endpoints and delivery health. */
 const API_KEYS = [
@@ -76,19 +74,12 @@ const ENV_TONE = {
 } as const
 
 export default function ApiWebhooksPage() {
-  const mayConfigure = can(CURRENT_USER.role, "webhook.configure")
-
   return (
     <>
       <PageHeader
         title="API & Webhooks"
         description="Credentials, event subscriptions and delivery health for client integrations."
-        actions={
-          <Button variant="primary" className="h-12 px-5" disabled={!mayConfigure}>
-            New API Key
-            <Plus />
-          </Button>
-        }
+        actions={<ApiWebhooksPageActions />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">

@@ -1,9 +1,8 @@
-import { Banknote, Download, Layers, RotateCcw, Wallet } from "lucide-react"
+import { Banknote, Layers, RotateCcw, Wallet } from "lucide-react"
 
 import { naira, nairaShort, shortDate } from "@/lib/format"
 import { RAIL_LABEL, type LedgerEntry } from "@/lib/domain/types"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
+import { SettlementsPageActions } from "@/components/wizards/misc-page-actions"
 
 /**
  * Settlement + ledger view.
@@ -118,12 +118,7 @@ export default function SettlementsPage() {
       <PageHeader
         title="Settlements"
         description="Immutable double-entry ledger and settlement status across every recovery rail."
-        actions={
-          <Button variant="soft" className="h-12 px-5">
-            Export Ledger
-            <Download />
-          </Button>
-        }
+        actions={<SettlementsPageActions />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">

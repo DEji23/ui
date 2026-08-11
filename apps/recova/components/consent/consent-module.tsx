@@ -25,6 +25,8 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { QueueToolbar } from "@/components/shared/queue-toolbar"
 import { StatCard } from "@/components/shared/stat-card"
 import { ConsentStatusPill } from "@/components/shared/status-pill"
+import { ResultDialog } from "@/components/queues/action-dialogs"
+import { CreateMandateDialog } from "@/components/wizards/create-mandate-dialog"
 
 const FILTERS: Array<{ value: string; label: string; states?: ConsentStatus[] }> = [
   { value: "all", label: "All" },
@@ -207,22 +209,45 @@ function ConsentDetailSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [result, setResult] = React.useState<{ title: string; message: string } | null>(
+    null
+  )
+
   if (!record) return null
 
   const canCreateMandates =
     record.status === "GRANTED" && record.linkedAccounts.length > 0
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         title="Consent Record"
         description={`${record.borrowerName} · ${record.bvnMasked}`}
         footer={
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button variant="soft" size="lg" className="sm:flex-1">
+            <Button
+              variant="soft"
+              size="lg"
+              className="sm:flex-1"
+              onClick={() =>
+                setResult({
+                  title: "Evidence queued",
+                  message: `The signed consent artefact for ${record.borrowerName} — version ${record.version}, ${CHANNEL_LABEL[record.authChannel]}, with timestamp — has been queued for download as NDPA evidence.`,
+                })
+              }
+            >
               Download Evidence
             </Button>
-            <Button variant="primary" size="lg" className="sm:flex-1" disabled={!canCreateMandates}>
+            <Button
+              variant="primary"
+              size="lg"
+              className="sm:flex-1"
+              disabled={!canCreateMandates}
+              title={canCreateMandates ? undefined : "Consent must be granted with at least one linked account first."}
+              onClick={() => setCreateOpen(true)}
+            >
               Create Mandates
             </Button>
           </div>
@@ -322,5 +347,15 @@ function ConsentDetailSheet({
         </div>
       </SheetContent>
     </Sheet>
+
+      <CreateMandateDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      <ResultDialog
+        open={result !== null}
+        onOpenChange={(o) => !o && setResult(null)}
+        title={result?.title ?? ""}
+        message={result?.message ?? ""}
+      />
+    </>
   )
 }

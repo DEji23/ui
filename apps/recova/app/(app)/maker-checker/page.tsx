@@ -1,3 +1,6 @@
+"use client"
+
+import * as React from "react"
 import { Check, ShieldCheck, X } from "lucide-react"
 
 import { naira, relativeTime } from "@/lib/format"
@@ -16,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
+import { ResultDialog } from "@/components/queues/action-dialogs"
 
 /**
  * Maker-checker queue.
@@ -83,6 +87,22 @@ const PENDING: PendingApproval[] = [
 ]
 
 export default function MakerCheckerPage() {
+  const [pending, setPending] = React.useState<PendingApproval[]>(PENDING)
+  const [result, setResult] = React.useState<{ title: string; message: string } | null>(
+    null
+  )
+
+  function decide(item: PendingApproval, decision: "APPROVED" | "REJECTED") {
+    setPending((prev) => prev.filter((p) => p.id !== item.id))
+    setResult({
+      title: decision === "APPROVED" ? "Approved" : "Rejected",
+      message:
+        decision === "APPROVED"
+          ? `${item.action} on ${item.subject} is countersigned by ${CURRENT_USER.name} and takes effect immediately. Written to the audit log with both the maker's and checker's identity.`
+          : `${item.action} on ${item.subject} has been rejected by ${CURRENT_USER.name} and returned to ${item.maker} with the decision logged.`,
+    })
+  }
+
   return (
     <>
       <PageHeader
@@ -101,11 +121,16 @@ export default function MakerCheckerPage() {
           <CardHeader className="p-0 pb-4">
             <div>
               <CardTitle>Pending Approvals</CardTitle>
-              <CardDescription>{PENDING.length} awaiting a checker</CardDescription>
+              <CardDescription>{pending.length} awaiting a checker</CardDescription>
             </div>
             <ShieldCheck className="size-5 text-brand" />
           </CardHeader>
           <CardContent className="p-0">
+            {pending.length === 0 ? (
+              <p className="py-8 text-center text-sm text-subtle">
+                Nothing outstanding — every sensitive action has a second signature.
+              </p>
+            ) : (
             <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -119,7 +144,7 @@ export default function MakerCheckerPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {PENDING.map((item) => {
+                {pending.map((item) => {
                   // A checker needs the permission AND must not be the maker.
                   const isMaker = item.maker === CURRENT_USER.name
                   const mayApprove =
@@ -161,6 +186,7 @@ export default function MakerCheckerPage() {
                                   ? undefined
                                   : `Requires the ${item.permission} permission.`
                               }
+                              onClick={() => decide(item, "APPROVED")}
                             >
                               <Check />
                               Approve
@@ -169,6 +195,7 @@ export default function MakerCheckerPage() {
                               size="sm"
                               variant="dangerSoft"
                               disabled={!mayApprove}
+                              onClick={() => decide(item, "REJECTED")}
                             >
                               <X />
                               Reject
@@ -181,6 +208,7 @@ export default function MakerCheckerPage() {
                 })}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
 
@@ -202,6 +230,13 @@ export default function MakerCheckerPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ResultDialog
+        open={result !== null}
+        onOpenChange={(o) => !o && setResult(null)}
+        title={result?.title ?? ""}
+        message={result?.message ?? ""}
+      />
     </>
   )
 }

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Building2, CheckCircle2, Plus, ShieldAlert } from "lucide-react"
+import { Building2, CheckCircle2, ShieldAlert } from "lucide-react"
 
 import { shortDate } from "@/lib/format"
 import { ORGANISATIONS } from "@/lib/data/organisations"
@@ -15,7 +15,6 @@ import { can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
+import { OrganisationsPageActions } from "@/components/wizards/misc-page-actions"
 
 type Tone = "neutral" | "success" | "warning" | "error" | "info" | "purple" | "brand"
 
@@ -63,12 +63,7 @@ export default function OrganisationsPage() {
       <PageHeader
         title="Organisations"
         description="Tenants onboarding onto the platform. Live recovery is gated on all seven onboarding phases."
-        actions={
-          <Button variant="primary" className="h-12 px-5" disabled={!mayApprove}>
-            Create Organisation
-            <Plus />
-          </Button>
-        }
+        actions={<OrganisationsPageActions mayApprove={mayApprove} />}
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">
