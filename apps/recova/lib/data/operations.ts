@@ -464,7 +464,8 @@ export const DISPUTES: Dispute[] = [
     },
     slaDueAt: "2026-08-07T17:00:00Z",
     createdAt: "2026-07-31T11:40:00Z",
-    // NDD indemnity: the bank is reclaiming funds under the scheme rules.
+    // Indemnity claim: the bank is reclaiming funds under the scheme rules.
+    // Recovered via rc_007 on REMITA, not NDD — indemnity isn't rail-specific.
     isIndemnityClaim: true,
   },
   {

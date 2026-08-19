@@ -315,9 +315,9 @@ function DisputeDetailSheet({
           ) : null}
 
           {dispute.isIndemnityClaim ? (
-            <Alert tone="error" title="NDD indemnity claim">
-              The bank is reclaiming funds under the Direct Debit scheme. The
-              transaction is marked AT_RISK and this case is prioritised.
+            <Alert tone="error" title="Indemnity claim">
+              The bank is reclaiming funds under the applicable scheme rules for this
+              rail. The transaction is marked AT_RISK and this case is prioritised.
             </Alert>
           ) : null}
 
