@@ -11,11 +11,13 @@ import {
   Users,
 } from "lucide-react"
 
-import { naira, nairaShort, relativeTime } from "@/lib/format"
+import { naira, nairaShort, percent, relativeTime } from "@/lib/format"
 import { RECOVERY_CASES } from "@/lib/data/recovery-cases"
-import { AUDIT_EVENTS, INCIDENTS, RAIL_HEALTH } from "@/lib/data/operations"
+import { AUDIT_EVENTS, DISPUTES, INCIDENTS, MANDATES, RAIL_HEALTH } from "@/lib/data/operations"
+import { PENDING_APPROVALS } from "@/lib/data/approvals"
 import { RAIL_LABEL } from "@/lib/domain/types"
 import { DEFAULT_POLICY } from "@/lib/domain/policy"
+import { APP_NOW } from "@/lib/clock"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -51,6 +53,30 @@ const CATEGORY_TONE = {
   ACCESS: "info",
 } as const
 
+/**
+ * Three-tier rail status — the PRD calls for a clear healthy/degraded/
+ * critical distinction, not just a pass/fail bar. Critical is tied to the
+ * actual circuit-breaker trip threshold (not an arbitrary second number),
+ * degraded is the warning zone above it but below full health.
+ */
+type RailStatus = "healthy" | "degraded" | "critical"
+
+function railStatus(successRate: number): RailStatus {
+  const criticalBelow = 1 - DEFAULT_POLICY.circuitBreaker.railFailureRateThreshold
+  if (successRate < criticalBelow) return "critical"
+  if (successRate < 0.85) return "degraded"
+  return "healthy"
+}
+
+const RAIL_STATUS_STYLE: Record<
+  RailStatus,
+  { label: string; text: string; bar: string }
+> = {
+  healthy: { label: "Healthy", text: "text-success-600", bar: "bg-success-500" },
+  degraded: { label: "Degraded", text: "text-warning-600", bar: "bg-warning-500" },
+  critical: { label: "Critical", text: "text-error-600", bar: "bg-error-600" },
+}
+
 const SEVERITY_DOT = {
   CRITICAL: "bg-error-600",
   WARN: "bg-warning-600",
@@ -64,6 +90,18 @@ export default function DashboardPage() {
     .slice(0, 4)
 
   const totalOutstanding = RECOVERY_CASES.reduce((sum, c) => sum + c.outstanding, 0)
+  const totalOriginal = RECOVERY_CASES.reduce((sum, c) => sum + c.originalAmount, 0)
+  const totalRecovered = RECOVERY_CASES.reduce((sum, c) => sum + c.amountRecovered, 0)
+  const recoveryRate = totalOriginal > 0 ? (totalRecovered / totalOriginal) * 100 : 0
+  const loansInRecovery = RECOVERY_CASES.filter((c) => c.state !== "CLOSED_PAID").length
+  const activeMandates = MANDATES.filter((m) => m.status === "ACTIVE").length
+  const openDisputes = DISPUTES.filter(
+    (d) => d.status === "OPEN" || d.status === "INVESTIGATING" || d.status === "AWAITING_EVIDENCE"
+  ).length
+  const slaBreaches = DISPUTES.filter(
+    (d) => new Date(d.slaDueAt) < APP_NOW && d.status !== "REFUNDED" && d.status !== "REJECTED" && d.status !== "UPHELD"
+  ).length
+  const pendingApprovals = PENDING_APPROVALS.length
 
   return (
     <>
@@ -73,73 +111,64 @@ export default function DashboardPage() {
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">
-        {/* Row 1 — recovery performance */}
+        {/* Row 1 — recovery performance, computed live from RECOVERY_CASES */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Recovery Rate"
-            value="87.4%"
+            value={percent(recoveryRate, 1)}
             icon={TrendingUp}
             tone="info"
-            delta={-18}
-            caption="vs last month"
+            caption="Recovered ÷ original, all open + closed cases"
           />
           <StatCard
             label="Loans In Recovery"
-            value="1,847"
+            value={loansInRecovery.toLocaleString()}
             icon={Users}
             tone="warning"
-            delta={-18}
-            caption="vs last month"
+            caption="Cases not yet closed paid"
           />
           <StatCard
             label="Collected"
-            value={nairaShort(284_800_000)}
+            value={nairaShort(totalRecovered)}
             icon={Banknote}
             tone="success"
-            delta={18}
-            caption="vs last month"
+            caption="Sum of amountRecovered"
           />
           <StatCard
             label="Outstanding"
-            value={nairaShort(8_400_000_000)}
+            value={nairaShort(totalOutstanding)}
             icon={CircleAlert}
             tone="error"
-            delta={-18}
-            caption="vs last month"
-            invertDelta
+            caption="Sum of outstanding balances"
           />
         </div>
 
-        {/* Row 2 — control surface */}
+        {/* Row 2 — control surface, computed live from mandates/disputes/approvals */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Active Mandates"
-            value="1,247"
+            value={activeMandates.toLocaleString()}
             icon={BadgeCheck}
             tone="brand"
             caption="NDD + Remita live"
           />
           <StatCard
             label="Open Disputes"
-            value="23"
+            value={openDisputes.toLocaleString()}
             icon={MessageSquareWarning}
             tone="warning"
-            delta={-2}
-            caption="vs yesterday"
-            invertDelta
+            caption="Open, Investigating or Awaiting Evidence"
           />
           <StatCard
             label="SLA Breaches"
-            value="8"
+            value={slaBreaches.toLocaleString()}
             icon={AlertTriangle}
             tone="error"
-            delta={1}
-            caption="new today"
-            invertDelta
+            caption="Unresolved past their SLA due date"
           />
           <StatCard
             label="Pending Approval"
-            value="11"
+            value={pendingApprovals.toLocaleString()}
             icon={Clock4}
             tone="warning"
             caption="Maker checker queue"
@@ -193,14 +222,25 @@ export default function DashboardPage() {
             <CardContent className="flex flex-col gap-5">
               {RAIL_HEALTH.map((rail) => {
                 const pct = Math.round(rail.successRate * 100)
-                const breached =
-                  rail.successRate <
-                  1 - DEFAULT_POLICY.circuitBreaker.railFailureRateThreshold
+                const status = railStatus(rail.successRate)
+                const style = RAIL_STATUS_STYLE[status]
                 return (
                   <div key={rail.rail} className="flex flex-col gap-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="flex items-center gap-2 text-sm font-semibold text-ink">
                         {RAIL_LABEL[rail.rail]}
+                        <Badge
+                          dot
+                          tone={
+                            status === "healthy"
+                              ? "success"
+                              : status === "degraded"
+                                ? "warning"
+                                : "error"
+                          }
+                        >
+                          {style.label}
+                        </Badge>
                         {rail.circuitOpen ? (
                           <Badge tone="error" dot>
                             CIRCUIT OPEN
@@ -212,24 +252,12 @@ export default function DashboardPage() {
                           {rail.attempts.toLocaleString()} attempts ·{" "}
                           {rail.avgLatencyMs}ms
                         </span>
-                        <span
-                          className={
-                            breached
-                              ? "tabular font-bold text-error-600"
-                              : "tabular font-bold text-success-600"
-                          }
-                        >
-                          {pct}%
-                        </span>
+                        <span className={`tabular font-bold ${style.text}`}>{pct}%</span>
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
                       <div
-                        className={
-                          breached
-                            ? "h-full rounded-full bg-error-600"
-                            : "h-full rounded-full bg-success-500"
-                        }
+                        className={`h-full rounded-full ${style.bar}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>

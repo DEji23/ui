@@ -2,7 +2,12 @@ import { CheckCircle2, Scale, TriangleAlert } from "lucide-react"
 
 import { naira, percent, relativeTime } from "@/lib/format"
 import { RECONCILIATION_EXCEPTIONS } from "@/lib/data/operations"
-import { SETTLEMENT_WINDOW_HOURS } from "@/lib/domain/reconciliation"
+import { LEDGER } from "@/lib/data/ledger"
+import {
+  reconciliationSummary,
+  SETTLEMENT_WINDOW_HOURS,
+  type MatchResult,
+} from "@/lib/domain/reconciliation"
 import { RAIL_LABEL, RAILS } from "@/lib/domain/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +34,24 @@ export default function ReconciliationPage() {
   const open = RECONCILIATION_EXCEPTIONS.filter((e) => e.status !== "RESOLVED")
   const duplicates = RECONCILIATION_EXCEPTIONS.filter((e) => e.outcome === "DUPLICATE")
 
+  // Every ledger entry is a real reconciliation attempt — one that also has
+  // a logged exception carries that exception's outcome, everything else
+  // reconciled clean. reconciliationSummary() then computes accuracy from
+  // this, rather than a hardcoded illustrative figure.
+  const matchResults: MatchResult[] = LEDGER.map((entry) => {
+    const exception = RECONCILIATION_EXCEPTIONS.find((e) => e.transactionId === entry.transactionId)
+    return {
+      transactionId: entry.transactionId,
+      outcome: exception?.outcome ?? "MATCHED",
+      internalAmount: entry.amount,
+      bankAmount: exception?.bankAmount ?? entry.amount,
+      detail: exception
+        ? `${RAIL_LABEL[exception.rail]} · ${exception.status}`
+        : "Matched against settlement file",
+    }
+  })
+  const summary = reconciliationSummary(matchResults)
+
   return (
     <>
       <PageHeader
@@ -41,10 +64,10 @@ export default function ReconciliationPage() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Reconciliation Accuracy"
-            value={percent(99.94, 2)}
+            value={percent(summary.accuracy, 2)}
             icon={CheckCircle2}
             tone="success"
-            caption="Target ≥ 99.9%"
+            caption={`Target ≥ 99.9% · ${summary.unmatched} unmatched of ${summary.total}`}
           />
           <StatCard
             label="Open Exceptions"

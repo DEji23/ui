@@ -6,6 +6,7 @@ import { Check, Pencil, ShieldCheck, X } from "lucide-react"
 import { naira, relativeTime } from "@/lib/format"
 import { MAKER_CHECKER_ACTIONS, can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
+import { PENDING_APPROVALS, type PendingApproval } from "@/lib/data/approvals"
 import { Alert } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -77,67 +78,9 @@ const APPROVAL_POLICIES: ApprovalPolicy[] = [
  * maker can never approve their own request — the separation-of-duties rule
  * the RBAC PRD calls "critical for audit".
  */
-interface PendingApproval {
-  id: string
-  action: string
-  permission: string
-  subject: string
-  amount: number | null
-  maker: string
-  makerRole: string
-  reasonCode: string
-  requestedAt: string
-}
-
-const PENDING: PendingApproval[] = [
-  {
-    id: "mc_001",
-    action: "Approve refund",
-    permission: "refund.approve",
-    subject: "DSP-2026-0031 · Chidinma Obi",
-    amount: 2_100_000,
-    maker: "Ibrahim Musa",
-    makerRole: "Finance / Ops",
-    reasonCode: "DUPLICATE_DEBIT",
-    requestedAt: "2026-08-06T09:40:00Z",
-  },
-  {
-    id: "mc_002",
-    action: "Escalate to legal review",
-    permission: "legal.escalate",
-    subject: "LN-2024-1302 · Ngozi Adeyemi",
-    amount: 1_240_000,
-    maker: "Fatima Bello",
-    makerRole: "Debt Recovery Officer",
-    reasonCode: "RECOVERY_EXHAUSTED",
-    requestedAt: "2026-08-06T07:30:00Z",
-  },
-  {
-    id: "mc_003",
-    action: "Force debit outside policy",
-    permission: "recovery.override",
-    subject: "LN-28471 · Emeka Okafor",
-    amount: 487_500,
-    maker: "Chidi Okeke",
-    makerRole: "Debt Recovery Officer",
-    reasonCode: "CUSTOMER_AUTHORISED_BY_PHONE",
-    requestedAt: "2026-08-06T06:15:00Z",
-  },
-  {
-    id: "mc_004",
-    action: "Policy exception — retry cap",
-    permission: "policy.configure",
-    subject: "POL-RETRY-001",
-    amount: null,
-    maker: "Adaora Nwosu",
-    makerRole: "Debt Recovery Manager",
-    reasonCode: "MONTH_END_PUSH",
-    requestedAt: "2026-08-05T16:00:00Z",
-  },
-]
 
 export default function MakerCheckerPage() {
-  const [pending, setPending] = React.useState<PendingApproval[]>(PENDING)
+  const [pending, setPending] = React.useState<PendingApproval[]>(PENDING_APPROVALS)
   const [policies, setPolicies] = React.useState<ApprovalPolicy[]>(APPROVAL_POLICIES)
   const [editingId, setEditingId] = React.useState<string | null>(null)
   const [draftThreshold, setDraftThreshold] = React.useState("")
