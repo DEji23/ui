@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { LogOut, ShieldPlus } from "lucide-react"
 
 import { PERMISSIONS, ROLES, ROLE_LABEL, ROLE_PERMISSIONS, type Permission, type Role } from "@/lib/domain/rbac"
 import { can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
 import { TASKS } from "@/lib/data/tasks"
+import type { AppUser } from "@/lib/data/users"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,24 +25,13 @@ import {
 } from "@/components/ui/table"
 import { ResultDialog } from "@/components/queues/action-dialogs"
 
-interface AppUser {
-  name: string
-  email: string
-  role: Role
-  status: "Active" | "Invited" | "Offboarded"
-  mfa: boolean
+const STATUS_TONE: Record<AppUser["status"], "success" | "info" | "warning" | "error"> = {
+  "Invitation Sent": "warning",
+  "Account Activated": "info",
+  "Role Provisioned": "info",
+  "Ready for Operations": "success",
+  Offboarded: "error",
 }
-
-const INITIAL_USERS: AppUser[] = [
-  { name: "Adaora Nwosu", email: "adaora.nwosu@vfdmfb.com", role: "DRM", status: "Active", mfa: true },
-  { name: "Chidi Okeke", email: "chidi.okeke@vfdmfb.com", role: "DRO", status: "Active", mfa: true },
-  { name: "Fatima Bello", email: "fatima.bello@vfdmfb.com", role: "DRO", status: "Active", mfa: true },
-  { name: "Ibrahim Musa", email: "ibrahim.musa@vfdmfb.com", role: "FINANCE", status: "Active", mfa: true },
-  { name: "Sarah Okonkwo", email: "sarah.okonkwo@vfdmfb.com", role: "LEGAL", status: "Active", mfa: true },
-  { name: "John Okeke", email: "john.okeke@vfdmfb.com", role: "LEGAL", status: "Invited", mfa: false },
-  { name: "Tobi Adeleke", email: "tobi.adeleke@vfdmfb.com", role: "ADMIN", status: "Active", mfa: true },
-  { name: "partner-api", email: "integrations@lender.ng", role: "INTEGRATOR", status: "Active", mfa: false },
-]
 
 interface CustomRole {
   id: string
@@ -61,8 +52,13 @@ const PERMISSION_GROUPS: Array<{ label: string; test: (p: Permission) => boolean
   { label: "Reporting & audit", test: (p) => p.startsWith("report.") || p.startsWith("audit.") },
 ]
 
-export function UsersManagement() {
-  const [users, setUsers] = React.useState<AppUser[]>(INITIAL_USERS)
+export function UsersManagement({
+  users,
+  setUsers,
+}: {
+  users: AppUser[]
+  setUsers: React.Dispatch<React.SetStateAction<AppUser[]>>
+}) {
   const [customRoles, setCustomRoles] = React.useState<CustomRole[]>([])
   const [offboardTarget, setOffboardTarget] = React.useState<AppUser | null>(null)
   const [roleBuilderOpen, setRoleBuilderOpen] = React.useState(false)
@@ -78,7 +74,7 @@ export function UsersManagement() {
       (t) => t.assignedTo === offboardTarget.name && t.status !== "RESOLVED" && t.status !== "CLOSED"
     )
     setUsers((prev) =>
-      prev.map((u) => (u.email === offboardTarget.email ? { ...u, status: "Offboarded" } : u))
+      prev.map((u) => (u.id === offboardTarget.id ? { ...u, status: "Offboarded" } : u))
     )
     setOffboardTarget(null)
     setResult({
@@ -106,6 +102,7 @@ export function UsersManagement() {
               <TableRow className="hover:bg-transparent">
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Business Unit</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead>MFA</TableHead>
@@ -115,13 +112,14 @@ export function UsersManagement() {
             </TableHeader>
             <TableBody>
               {users.map((u) => (
-                <TableRow key={u.email}>
+                <TableRow key={u.id}>
                   <TableCell
                     className={cn("font-semibold", u.status === "Offboarded" ? "text-subtle line-through" : "text-ink")}
                   >
                     {u.name}
                   </TableCell>
                   <TableCell className="text-subtle">{u.email}</TableCell>
+                  <TableCell className="text-subtle">{u.businessUnit}</TableCell>
                   <TableCell>
                     <Badge tone="info">{ROLE_LABEL[u.role]}</Badge>
                   </TableCell>
@@ -134,36 +132,36 @@ export function UsersManagement() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      dot
-                      tone={
-                        u.status === "Active"
-                          ? "success"
-                          : u.status === "Offboarded"
-                            ? "error"
-                            : "warning"
-                      }
-                    >
+                    <Badge dot tone={STATUS_TONE[u.status]}>
                       {u.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="dangerSoft"
-                      size="sm"
-                      disabled={!maySuspend || u.status === "Offboarded" || u.email === CURRENT_USER.email}
-                      title={
-                        u.email === CURRENT_USER.email
-                          ? "You cannot offboard yourself."
-                          : maySuspend
-                            ? undefined
-                            : "Requires the role.assign permission."
-                      }
-                      onClick={() => setOffboardTarget(u)}
-                    >
-                      <LogOut className="size-3.5" />
-                      Offboard
-                    </Button>
+                    {u.status === "Invitation Sent" ? (
+                      <Link
+                        href={`/activate/${u.id}`}
+                        className="text-xs font-semibold text-brand hover:underline"
+                      >
+                        Open activation link →
+                      </Link>
+                    ) : (
+                      <Button
+                        variant="dangerSoft"
+                        size="sm"
+                        disabled={!maySuspend || u.status === "Offboarded" || u.email === CURRENT_USER.email}
+                        title={
+                          u.email === CURRENT_USER.email
+                            ? "You cannot offboard yourself."
+                            : maySuspend
+                              ? undefined
+                              : "Requires the role.assign permission."
+                        }
+                        onClick={() => setOffboardTarget(u)}
+                      >
+                        <LogOut className="size-3.5" />
+                        Offboard
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -220,6 +218,7 @@ export function UsersManagement() {
 
       <OffboardDialog
         user={offboardTarget}
+        candidates={users}
         onOpenChange={(o) => !o && setOffboardTarget(null)}
         onConfirm={handleOffboardConfirm}
       />
@@ -249,10 +248,12 @@ export function UsersManagement() {
 
 function OffboardDialog({
   user,
+  candidates: allUsers,
   onOpenChange,
   onConfirm,
 }: {
   user: AppUser | null
+  candidates: AppUser[]
   onOpenChange: (open: boolean) => void
   onConfirm: (reason: string, notes: string, reassignTo: string) => void
 }) {
@@ -264,7 +265,7 @@ function OffboardDialog({
     ? TASKS.filter((t) => t.assignedTo === user.name && t.status !== "RESOLVED" && t.status !== "CLOSED")
     : []
   const candidates = user
-    ? INITIAL_USERS.filter((u) => u.role === user.role && u.email !== user.email && u.status === "Active")
+    ? allUsers.filter((u) => u.role === user.role && u.id !== user.id && u.status === "Ready for Operations")
     : []
 
   React.useEffect(() => {

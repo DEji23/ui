@@ -1,6 +1,11 @@
+"use client"
+
+import * as React from "react"
+
 import { ROLES, ROLE_LABEL, ROLE_PERMISSIONS } from "@/lib/domain/rbac"
 import { STATE_OWNER, ASSIGNMENT_RULES } from "@/lib/domain/rbac"
 import { RECOVERY_STATE_LABEL, type RecoveryState } from "@/lib/domain/types"
+import { USERS, type AppUser } from "@/lib/data/users"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/shared/page-header"
@@ -18,15 +23,17 @@ const OWNED_STATES: RecoveryState[] = [
 ]
 
 export default function UsersPage() {
+  const [users, setUsers] = React.useState<AppUser[]>(() => [...USERS])
+
   return (
     <>
       <PageHeader
         title="User Management"
         description="Roles, permissions and workflow ownership across the recovery lifecycle."
-        actions={<UsersPageActions />}
+        actions={<UsersPageActions onUserAdded={(user) => setUsers((prev) => [...prev, user])} />}
       />
 
-      <UsersManagement />
+      <UsersManagement users={users} setUsers={setUsers} />
 
       <div className="flex flex-col gap-6 px-8 pb-12">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">

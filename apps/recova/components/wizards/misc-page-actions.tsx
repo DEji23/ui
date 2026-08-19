@@ -16,6 +16,7 @@ import {
 import { can } from "@/lib/domain/rbac"
 import { ROLES, ROLE_LABEL, type Role } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
+import { addUser, BUSINESS_UNITS, type AppUser } from "@/lib/data/users"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input, Label, Select } from "@/components/ui/input"
@@ -207,16 +208,18 @@ function InviteUserDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onInvited: (message: string) => void
+  onInvited: (user: AppUser) => void
 }) {
   const [name, setName] = React.useState("")
   const [email, setEmail] = React.useState("")
+  const [businessUnit, setBusinessUnit] = React.useState<string>(BUSINESS_UNITS[0])
   const [role, setRole] = React.useState<Role>("DRO")
 
   React.useEffect(() => {
     if (open) {
       setName("")
       setEmail("")
+      setBusinessUnit(BUSINESS_UNITS[0])
       setRole("DRO")
     }
   }, [open])
@@ -244,9 +247,8 @@ function InviteUserDialog({
               className="sm:flex-1"
               disabled={!valid}
               onClick={() => {
-                onInvited(
-                  `Invitation sent to ${email}. ${name} is assigned the ${ROLE_LABEL[role]} role and will land in Account Activation once they set a password and enrol MFA.`
-                )
+                const user = addUser({ name: name.trim(), email: email.trim(), businessUnit, role })
+                onInvited(user)
                 onOpenChange(false)
               }}
             >
@@ -271,6 +273,16 @@ function InviteUserDialog({
             />
           </div>
           <div className="flex flex-col gap-2">
+            <Label htmlFor="iu-bu">Business unit *</Label>
+            <Select id="iu-bu" value={businessUnit} onChange={(e) => setBusinessUnit(e.target.value)}>
+              {BUSINESS_UNITS.map((bu) => (
+                <option key={bu} value={bu}>
+                  {bu}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
             <Label htmlFor="iu-role">Role *</Label>
             <Select id="iu-role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.filter((r) => r !== "SUPER_ADMIN").map((r) => (
@@ -286,7 +298,11 @@ function InviteUserDialog({
   )
 }
 
-export function UsersPageActions() {
+export function UsersPageActions({
+  onUserAdded,
+}: {
+  onUserAdded: (user: AppUser) => void
+}) {
   const [open, setOpen] = React.useState(false)
   const { result, setResult } = useResult()
 
@@ -299,7 +315,13 @@ export function UsersPageActions() {
       <InviteUserDialog
         open={open}
         onOpenChange={setOpen}
-        onInvited={(message) => setResult({ title: "Invitation sent", message })}
+        onInvited={(user) => {
+          onUserAdded(user)
+          setResult({
+            title: "Invitation sent",
+            message: `Invitation sent to ${user.email}. ${user.name} is assigned the ${ROLE_LABEL[user.role]} role in ${user.businessUnit} and appears below with status "Invitation Sent". Temporary password: ${user.tempPassword} — activation link: /activate/${user.id}. They'll land in Account Activation once they set a real password, enrol MFA and accept both policies.`,
+          })
+        }}
       />
       <ResultDialog
         open={result !== null}
