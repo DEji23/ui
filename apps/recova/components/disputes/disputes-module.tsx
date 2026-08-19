@@ -4,7 +4,10 @@ import * as React from "react"
 import { Check, CircleSlash, Undo2 } from "lucide-react"
 
 import { naira, relativeTime, shortDate } from "@/lib/format"
+import { APP_NOW } from "@/lib/clock"
 import { DISPUTES } from "@/lib/data/operations"
+import { appendLedgerEntry } from "@/lib/data/ledger"
+import { applyRefundToCase, caseByLoanId } from "@/lib/data/recovery-cases"
 import { can, requiresMakerChecker } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
 import {
@@ -202,10 +205,23 @@ function DisputeDetailSheet({
   function handleReasonConfirm(reasonCode: string) {
     if (!dispute) return
     if (reasonOpen === "approve") {
+      const recoveryCase = caseByLoanId(dispute.loanId)
+      appendLedgerEntry({
+        loanId: dispute.loanId,
+        transactionId: `${dispute.transactionId}-RF`,
+        type: "REFUND",
+        status: "PENDING",
+        amount: dispute.amount,
+        currency: "NGN",
+        rail: recoveryCase?.rail ?? "NDD",
+        referenceEntryId: null,
+        createdAt: APP_NOW.toISOString(),
+      })
+      applyRefundToCase(dispute.loanId, dispute.amount)
       onUpdate({ ...dispute, status: "REFUNDED" })
       setResult({
         title: "Refund approved",
-        message: `${naira(dispute.amount)} will be refunded against ${dispute.transactionId}. Reason logged as ${reasonCode}, requiring maker-checker countersignature before settlement.`,
+        message: `${naira(dispute.amount)} will be refunded against ${dispute.transactionId}. Reason logged as ${reasonCode}, requiring maker-checker countersignature before settlement. Posted to the ledger as a REFUND entry, and the loan's outstanding balance has been recalculated to reflect the reversed debit.`,
       })
     } else if (reasonOpen === "reject") {
       onUpdate({ ...dispute, status: "REJECTED" })
@@ -227,11 +243,24 @@ function DisputeDetailSheet({
 
   function handlePartialRefundConfirm(amount: number, reasonCode: string) {
     if (!dispute) return
+    const recoveryCase = caseByLoanId(dispute.loanId)
+    appendLedgerEntry({
+      loanId: dispute.loanId,
+      transactionId: `${dispute.transactionId}-RF`,
+      type: "REFUND",
+      status: "PENDING",
+      amount,
+      currency: "NGN",
+      rail: recoveryCase?.rail ?? "NDD",
+      referenceEntryId: null,
+      createdAt: APP_NOW.toISOString(),
+    })
+    applyRefundToCase(dispute.loanId, amount)
     onUpdate({ ...dispute, status: "REFUNDED" })
     setPartialOpen(false)
     setResult({
       title: "Partial refund approved",
-      message: `${naira(amount)} of ${naira(dispute.amount)} will be refunded against ${dispute.transactionId} — the remainder of the debit stands. Reason logged as ${reasonCode}, requiring maker-checker countersignature before settlement.`,
+      message: `${naira(amount)} of ${naira(dispute.amount)} will be refunded against ${dispute.transactionId} — the remainder of the debit stands. Reason logged as ${reasonCode}, requiring maker-checker countersignature before settlement. Posted to the ledger as a REFUND entry, and the loan's outstanding balance has been recalculated by the refunded amount.`,
     })
   }
 

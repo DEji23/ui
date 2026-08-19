@@ -5,7 +5,8 @@ import { Banknote, Layers, RotateCcw, Wallet } from "lucide-react"
 
 import { naira, nairaShort, shortDate } from "@/lib/format"
 import { organisationIdForLoan } from "@/lib/data/loans"
-import { RAIL_LABEL, type LedgerEntry } from "@/lib/domain/types"
+import { LEDGER } from "@/lib/data/ledger"
+import { RAIL_LABEL } from "@/lib/domain/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -24,70 +25,9 @@ import { EmptyState } from "@/components/shared/empty-state"
  * Settlement + ledger view.
  * The lifecycle column reflects the PRD's four-stage progression:
  * PENDING → PROVISIONAL (bank ack) → FINALIZED (settlement) → REVERSED.
+ * The ledger itself lives in lib/data/ledger.ts, shared with the recovery
+ * and disputes screens so their money-movement actions post here too.
  */
-const LEDGER: LedgerEntry[] = [
-  {
-    id: "led_001",
-    loanId: "LN-28611",
-    transactionId: "TX-88198770",
-    type: "DEBIT",
-    status: "FINALIZED",
-    amount: 940_000,
-    currency: "NGN",
-    rail: "NDD",
-    referenceEntryId: null,
-    createdAt: "2026-08-01T09:00:00Z",
-  },
-  {
-    id: "led_002",
-    loanId: "LN-2024-1401",
-    transactionId: "TX-88213004",
-    type: "DEBIT",
-    status: "PROVISIONAL",
-    amount: 2_100_000,
-    currency: "NGN",
-    rail: "NDD",
-    referenceEntryId: null,
-    createdAt: "2026-07-30T09:00:00Z",
-  },
-  {
-    id: "led_003",
-    loanId: "LN-2024-1401",
-    transactionId: "TX-88213004-R",
-    type: "REVERSAL",
-    status: "FINALIZED",
-    amount: 2_100_000,
-    currency: "NGN",
-    rail: "NDD",
-    referenceEntryId: "led_002",
-    createdAt: "2026-08-04T11:00:00Z",
-  },
-  {
-    id: "led_004",
-    loanId: "LN-28471",
-    transactionId: "TX-88201220-RF",
-    type: "REFUND",
-    status: "FINALIZED",
-    amount: 42_500,
-    currency: "NGN",
-    rail: "EASY_PAY",
-    referenceEntryId: "led_005",
-    createdAt: "2026-07-27T14:00:00Z",
-  },
-  {
-    id: "led_005",
-    loanId: "LN-2024-1355",
-    transactionId: "TX-88207001",
-    type: "DEBIT",
-    status: "PENDING",
-    amount: 320_000,
-    currency: "NGN",
-    rail: "EASY_PAY",
-    referenceEntryId: null,
-    createdAt: "2026-08-06T08:05:00Z",
-  },
-]
-
 const STATUS_TONE = {
   PENDING: "neutral",
   PROVISIONAL: "warning",

@@ -10,6 +10,7 @@ import { can } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
 import { DEFAULT_POLICY } from "@/lib/domain/policy"
 import { accountsFor } from "@/lib/data/recovery-cases"
+import { appendLedgerEntry } from "@/lib/data/ledger"
 import { RAIL_HEALTH_MAP } from "@/lib/data/operations"
 import { accountSuspension, recommend } from "@/lib/domain/orchestration"
 import { allowedTransitions, retryEligibility } from "@/lib/domain/state-machine"
@@ -115,6 +116,22 @@ export function RecoveryDetailSheet({
     const outstanding = Math.max(0, Math.round((recoveryCase.outstanding - amount) * 100) / 100)
     const nextState =
       outstanding === 0 ? "CLOSED_PAID" : outcome === "PARTIAL" ? "PARTIALLY_RECOVERED" : recoveryCase.state
+
+    // Every recovered naira is also a ledger event — full or partial — so the
+    // settlement record and the queue's own totals never drift apart.
+    if (amount > 0) {
+      appendLedgerEntry({
+        loanId: recoveryCase.loanId,
+        transactionId: `TX-${attempt.idempotencyKey}`,
+        type: "DEBIT",
+        status: "PROVISIONAL",
+        amount,
+        currency: "NGN",
+        rail: recommendation.rail,
+        referenceEntryId: null,
+        createdAt: APP_NOW.toISOString(),
+      })
+    }
 
     onUpdate({
       ...recoveryCase,

@@ -646,6 +646,29 @@ export function caseById(id: string): RecoveryCase | undefined {
   return RECOVERY_CASES.find((c) => c.id === id)
 }
 
+export function caseByLoanId(loanId: string): RecoveryCase | undefined {
+  return RECOVERY_CASES.find((c) => c.loanId === loanId)
+}
+
+/**
+ * Applies a refund against a loan's recovery case in place — the debit is
+ * being reversed, so the borrower owes it again. Returns the updated case,
+ * or null if the loan has no recovery case to adjust.
+ */
+export function applyRefundToCase(loanId: string, amount: number): RecoveryCase | null {
+  const index = RECOVERY_CASES.findIndex((c) => c.loanId === loanId)
+  if (index === -1) return null
+  const current = RECOVERY_CASES[index]
+  const updated: RecoveryCase = {
+    ...current,
+    amountRecovered: Math.max(0, Math.round((current.amountRecovered - amount) * 100) / 100),
+    outstanding: Math.round((current.outstanding + amount) * 100) / 100,
+    lastAction: "Refund applied — recovered amount and outstanding balance adjusted",
+  }
+  RECOVERY_CASES[index] = updated
+  return updated
+}
+
 export function accountsFor(borrowerId: string) {
   return ACCOUNT_POOL[borrowerId] ?? []
 }
