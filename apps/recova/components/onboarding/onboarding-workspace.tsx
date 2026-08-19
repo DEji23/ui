@@ -6,10 +6,12 @@ import {
   Circle,
   CircleDashed,
   ExternalLink,
+  FileCheck2,
   Lock,
   PlayCircle,
   Rocket,
   ShieldCheck,
+  Upload,
   XCircle,
 } from "lucide-react"
 
@@ -360,6 +362,18 @@ function RegistrationCard({
   const index = 0
   const done = advancedThrough > index
   const current = advancedThrough === index
+
+  const [cacFile, setCacFile] = React.useState<File | null>(null)
+  const [licenseFile, setLicenseFile] = React.useState<File | null>(null)
+  const [signatoryName, setSignatoryName] = React.useState("")
+  const [signatoryTitle, setSignatoryTitle] = React.useState("")
+  const [signatoryId, setSignatoryId] = React.useState("")
+
+  const uploadsComplete = cacFile !== null && licenseFile !== null
+  const signatoryComplete =
+    signatoryName.trim() !== "" && signatoryTitle.trim() !== "" && signatoryId.trim() !== ""
+  const registrationComplete = uploadsComplete && signatoryComplete
+
   return (
     <PhaseCard
       index={index}
@@ -375,7 +389,49 @@ function RegistrationCard({
         <Row label="Phone Number">{org.phoneNumber}</Row>
         <Row label="CBN License">{org.cbnLicense ?? "Not applicable"}</Row>
       </div>
-      <ItemList title="Uploads" items={ORG_REGISTRATION_UPLOADS} done={done || current} />
+
+      {current ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Uploads
+          </p>
+          <FileUploadField
+            label="CAC Certificate *"
+            file={cacFile}
+            onChange={setCacFile}
+            accept=".pdf,.png,.jpg,.jpeg"
+          />
+          <FileUploadField
+            label="Regulatory License *"
+            file={licenseFile}
+            onChange={setLicenseFile}
+            accept=".pdf,.png,.jpg,.jpeg"
+          />
+          <div className="rounded-[var(--radius-control)] border border-stroke p-3">
+            <p className="mb-2 text-xs font-semibold text-ink">Authorized Signatory *</p>
+            <div className="flex flex-col gap-2">
+              <Input
+                value={signatoryName}
+                onChange={(e) => setSignatoryName(e.target.value)}
+                placeholder="Full name"
+              />
+              <Input
+                value={signatoryTitle}
+                onChange={(e) => setSignatoryTitle(e.target.value)}
+                placeholder="Title / authority level (e.g. Managing Director)"
+              />
+              <Input
+                value={signatoryId}
+                onChange={(e) => setSignatoryId(e.target.value)}
+                placeholder="Government-issued ID number"
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <ItemList title="Uploads" items={ORG_REGISTRATION_UPLOADS} done={done} />
+      )}
+
       <ItemList title="System checks" items={ORG_REGISTRATION_SYSTEM_CHECKS} done={done} />
       <PhaseActionFooter
         current={current}
@@ -384,10 +440,59 @@ function RegistrationCard({
         pendingStatus={EXTERNAL_PHASE_STATUS_PENDING.ORG_REGISTRATION}
         actionLabel="Confirm Registration Verified"
         onAction={onAdvance}
-        disabled={!mayApprove}
-        disabledReason="Requires the role.assign permission."
+        disabled={!mayApprove || !registrationComplete}
+        disabledReason={
+          !registrationComplete
+            ? "Upload both documents and designate an authorized signatory first."
+            : "Requires the role.assign permission."
+        }
       />
     </PhaseCard>
+  )
+}
+
+function FileUploadField({
+  label,
+  file,
+  onChange,
+  accept,
+}: {
+  label: string
+  file: File | null
+  onChange: (file: File | null) => void
+  accept: string
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => inputRef.current?.click()}
+        >
+          <Upload className="size-3.5" />
+          Choose File
+        </Button>
+        {file ? (
+          <span className="flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-success-700">
+            <FileCheck2 className="size-3.5 shrink-0" />
+            {file.name}
+          </span>
+        ) : (
+          <span className="text-xs text-subtle">No file chosen</span>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+      />
+    </div>
   )
 }
 
