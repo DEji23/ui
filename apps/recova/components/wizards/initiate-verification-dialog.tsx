@@ -1,11 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, ShieldOff, Smartphone, UserRoundX, WalletCards } from "lucide-react"
+import {
+  CheckCircle2,
+  Clock,
+  ServerCrash,
+  ShieldOff,
+  Smartphone,
+  UserRoundX,
+  WalletCards,
+} from "lucide-react"
 
 import { naira } from "@/lib/format"
 import { IGREE_ONBOARDING_COST, TARIFFS } from "@/lib/domain/billing"
 import { Alert } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input, Label, Select } from "@/components/ui/input"
@@ -13,11 +22,27 @@ import { Input, Label, Select } from "@/components/ui/input"
 /**
  * iGree verification journey.
  *
- * Covers the happy path and all three documented failure exits:
- * consent declined, identity verification failed (3 OTP retries then a 24h
- * lockout), and no BVN-linked accounts.
+ * Covers the happy path plus five failure exits: consent declined, identity
+ * verification failed (3 OTP retries then a 24h lockout), no BVN-linked
+ * accounts, an expired OTP, and iGree itself being unavailable.
  */
-type Step = "details" | "otp" | "consent" | "success" | "declined" | "otp_failed" | "no_accounts"
+type Step =
+  | "details"
+  | "otp"
+  | "consent"
+  | "success"
+  | "declined"
+  | "otp_failed"
+  | "otp_expired"
+  | "no_accounts"
+  | "outage"
+
+function generateAccessToken(): string {
+  const chars = "abcdef0123456789"
+  let s = ""
+  for (let i = 0; i < 24; i++) s += chars[Math.floor(Math.random() * chars.length)]
+  return `igr_at_${s}`
+}
 
 const CHANNELS = [
   { value: "SMS_OTP", label: "SMS OTP" },
@@ -41,6 +66,7 @@ export function InitiateVerificationDialog({
   const [channel, setChannel] = React.useState("SMS_OTP")
   const [otp, setOtp] = React.useState("")
   const [attempts, setAttempts] = React.useState(0)
+  const [accessToken, setAccessToken] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (open) {
@@ -53,6 +79,7 @@ export function InitiateVerificationDialog({
       setChannel("SMS_OTP")
       setOtp("")
       setAttempts(0)
+      setAccessToken(null)
     }
   }, [open])
 
@@ -63,8 +90,19 @@ export function InitiateVerificationDialog({
     /.+@.+\..+/.test(email) &&
     /^\d{11}$/.test(bvn)
 
+  function proceedToVerification() {
+    // BVNs ending 9 simulate iGree itself being unreachable.
+    setStep(bvn.endsWith("9") ? "outage" : "otp")
+  }
+
   function submitOtp() {
-    // 000000 forces the failure branch; any other 6 digits succeeds.
+    // 111111 simulates a code that was valid but has since expired.
+    if (otp === "111111") {
+      setOtp("")
+      setStep("otp_expired")
+      return
+    }
+    // 000000 forces the wrong-code failure branch.
     if (otp === "000000") {
       const next = attempts + 1
       setAttempts(next)
@@ -73,7 +111,12 @@ export function InitiateVerificationDialog({
       return
     }
     // BVNs ending 0 simulate the no-linked-accounts exit.
-    setStep(bvn.endsWith("0") ? "no_accounts" : "consent")
+    if (bvn.endsWith("0")) {
+      setStep("no_accounts")
+      return
+    }
+    setAccessToken(generateAccessToken())
+    setStep("consent")
   }
 
   const titles: Record<Step, string> = {
@@ -83,7 +126,9 @@ export function InitiateVerificationDialog({
     success: "Verification Complete",
     declined: "Consent Declined",
     otp_failed: "Identity Verification Failed",
+    otp_expired: "OTP Expired",
     no_accounts: "No Linked Accounts",
+    outage: "iGree Unavailable",
   }
 
   return (
@@ -200,7 +245,7 @@ export function InitiateVerificationDialog({
               </Alert>
             ) : (
               <p className="text-center text-xs text-subtle">
-                Enter 000000 to exercise the failure path.
+                Enter 000000 for a wrong code, or 111111 for an expired code.
               </p>
             )}
           </div>
@@ -239,6 +284,16 @@ export function InitiateVerificationDialog({
                 is now unlocked for {firstName} {lastName}.
               </p>
             </div>
+            {accessToken ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                  iGree access token received and stored
+                </span>
+                <Badge tone="neutral" className="font-mono">
+                  {accessToken}
+                </Badge>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -288,6 +343,39 @@ export function InitiateVerificationDialog({
             </Alert>
           </div>
         ) : null}
+
+        {step === "otp_expired" ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <Clock className="size-12 text-warning-600" />
+              <p className="text-sm text-body">
+                That code has expired. OTPs are single-use and time-limited —
+                request a new one to continue.
+              </p>
+            </div>
+            <Alert tone="warning" title="Code expired, not incorrect">
+              This does not count against the 3-attempt lockout — expiry and a wrong
+              code are tracked separately.
+            </Alert>
+          </div>
+        ) : null}
+
+        {step === "outage" ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <ServerCrash className="size-12 text-error-600" />
+              <p className="text-sm text-body">
+                iGree is not responding right now. Nothing was charged and no
+                verification attempt was recorded.
+              </p>
+            </div>
+            <Alert tone="error" title="Service temporarily unavailable">
+              This is a transient failure, not a borrower-facing rejection — retry
+              once iGree recovers. The borrower has not been notified of any
+              decision.
+            </Alert>
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   )
@@ -309,7 +397,7 @@ export function InitiateVerificationDialog({
             size="lg"
             className="sm:flex-1"
             disabled={!detailsValid}
-            onClick={() => setStep("otp")}
+            onClick={proceedToVerification}
           >
             Proceed To Verification
           </Button>
@@ -357,6 +445,53 @@ export function InitiateVerificationDialog({
             onClick={() => setStep("success")}
           >
             Grant Consent
+          </Button>
+        </div>
+      )
+    }
+    if (step === "otp_expired") {
+      return (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            variant="outline"
+            size="lg"
+            className="sm:flex-1"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            className="sm:flex-1"
+            onClick={() => {
+              setOtp("")
+              setStep("otp")
+            }}
+          >
+            Resend OTP
+          </Button>
+        </div>
+      )
+    }
+    if (step === "outage") {
+      return (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            variant="outline"
+            size="lg"
+            className="sm:flex-1"
+            onClick={() => onOpenChange(false)}
+          >
+            Close
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            className="sm:flex-1"
+            onClick={proceedToVerification}
+          >
+            Retry
           </Button>
         </div>
       )

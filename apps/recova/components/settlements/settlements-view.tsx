@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Banknote, Layers, RotateCcw, Wallet } from "lucide-react"
+import { Banknote, BellRing, Layers, RotateCcw, Wallet } from "lucide-react"
 
 import { naira, nairaShort, shortDate } from "@/lib/format"
 import { organisationIdForLoan } from "@/lib/data/loans"
 import { LEDGER } from "@/lib/data/ledger"
 import { RAIL_LABEL } from "@/lib/domain/types"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -20,6 +21,7 @@ import {
 import { StatCard } from "@/components/shared/stat-card"
 import { OrgScopeSelector } from "@/components/shared/org-scope-selector"
 import { EmptyState } from "@/components/shared/empty-state"
+import { ResultDialog } from "@/components/queues/action-dialogs"
 
 /**
  * Settlement + ledger view.
@@ -43,6 +45,18 @@ const TYPE_TONE = {
 
 export function SettlementsView() {
   const [org, setOrg] = React.useState("all")
+  const [notified, setNotified] = React.useState<Record<string, boolean>>({})
+  const [result, setResult] = React.useState<{ title: string; message: string } | null>(
+    null
+  )
+
+  function notifyStakeholders(entryId: string, transactionId: string, amount: number) {
+    setNotified((prev) => ({ ...prev, [entryId]: true }))
+    setResult({
+      title: "Stakeholders notified",
+      message: `Finance, the assigned DRO and the lending client have all been sent the reversal notice for ${transactionId} (${naira(amount)}), per the ntf_reversal_stakeholders template.`,
+    })
+  }
 
   const rows = React.useMemo(
     () =>
@@ -125,6 +139,7 @@ export function SettlementsView() {
                   <TableHead>References</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Lifecycle</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,6 +166,21 @@ export function SettlementsView() {
                         {e.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      {e.type === "REVERSAL" ? (
+                        <Button
+                          variant={notified[e.id] ? "outline" : "soft"}
+                          size="sm"
+                          disabled={notified[e.id]}
+                          onClick={() => notifyStakeholders(e.id, e.transactionId, e.amount)}
+                        >
+                          <BellRing className="size-3.5" />
+                          {notified[e.id] ? "Notified" : "Notify Stakeholders"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-subtle">—</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -158,6 +188,13 @@ export function SettlementsView() {
           )}
         </CardContent>
       </Card>
+
+      <ResultDialog
+        open={result !== null}
+        onOpenChange={(o) => !o && setResult(null)}
+        title={result?.title ?? ""}
+        message={result?.message ?? ""}
+      />
     </div>
   )
 }

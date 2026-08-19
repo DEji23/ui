@@ -21,6 +21,10 @@ export interface DebitPolicy {
   railPriority: Rail[]
   /** Hours after the first attempt at which each retry fires. */
   retryIntervalsHours: number[]
+  /** EasyPay-specific override — when set, buildRetryPlan() uses this
+   *  instead of retryIntervalsHours for EasyPay's own ladder, since it's
+   *  a fallback rail and can run a faster cadence than NDD/Remita. */
+  easyPayRetryIntervalsHours?: number[]
   quietHours: { from: string; to: string }
   coolDownHoursAfterFailures: number
   failuresBeforeCoolDown: number
@@ -75,6 +79,9 @@ export const DEFAULT_POLICY: RecoveryPolicy = {
     maxAttemptsPerCycle: 4,
     railPriority: ["NDD", "REMITA", "EASY_PAY"],
     retryIntervalsHours: [24, 72, 168],
+    // EasyPay is a fallback rail — a faster cadence than NDD/Remita's
+    // settlement-synced ladder is safe here since it isn't a mandate rail.
+    easyPayRetryIntervalsHours: [12, 36],
     quietHours: { from: "22:00", to: "06:00" },
     coolDownHoursAfterFailures: 48,
     failuresBeforeCoolDown: 3,

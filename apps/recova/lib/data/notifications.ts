@@ -7,7 +7,13 @@
  */
 
 export type NotificationChannel = "SMS" | "EMAIL" | "DASHBOARD"
-export type NotificationAudience = "BORROWER" | "DRO" | "DRM" | "FINANCE" | "LEGAL"
+export type NotificationAudience =
+  | "BORROWER"
+  | "DRO"
+  | "DRM"
+  | "FINANCE"
+  | "LEGAL"
+  | "LENDING_CLIENT"
 
 export interface NotificationTemplate {
   id: string
@@ -171,6 +177,16 @@ export const NOTIFICATION_TEMPLATES: NotificationTemplate[] = [
     audience: ["BORROWER", "FINANCE"],
     subject: "Dispute Resolution Update",
     body: "VBank: Your dispute has been resolved. A refund of ₦{amount} has been processed to your account. Thank you for your patience.",
+    enabled: true,
+  },
+  {
+    id: "ntf_reversal_stakeholders",
+    event: "Ledger reversal posted",
+    trigger: "ledger.reversed",
+    channels: ["DASHBOARD", "EMAIL"],
+    audience: ["FINANCE", "DRO", "LENDING_CLIENT"],
+    subject: "Transaction Reversal Notice",
+    body: "A reversal of ₦{amount} has been posted against transaction {transactionId}. Finance, the assigned DRO and the lending client are all notified so the reversed amount is reflected before the next settlement run.",
     enabled: true,
   },
 ]

@@ -113,6 +113,13 @@ export default function PolicyEnginePage() {
                 value={policy.debit.retryIntervalsHours.map((h) => `+${h}h`).join(", ")}
                 hint="Synchronised with NDD and Remita settlement windows"
               />
+              {policy.debit.easyPayRetryIntervalsHours ? (
+                <Row
+                  label="EasyPay retry intervals (override)"
+                  value={policy.debit.easyPayRetryIntervalsHours.map((h) => `+${h}h`).join(", ")}
+                  hint="EasyPay isn't a mandate rail, so it can run a faster cadence than the shared ladder above"
+                />
+              ) : null}
               <Row
                 label="Quiet hours"
                 value={`${policy.debit.quietHours.from} – ${policy.debit.quietHours.to}`}

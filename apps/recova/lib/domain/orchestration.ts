@@ -254,7 +254,8 @@ export interface RetryPlan {
  */
 export function buildRetryPlan(
   firstAttemptAt: Date,
-  policy: RecoveryPolicy
+  policy: RecoveryPolicy,
+  rail?: Rail
 ): RetryPlan[] {
   const strategies = [
     "All mandated accounts",
@@ -267,7 +268,14 @@ export function buildRetryPlan(
     { attemptNo: 0, scheduledAt: firstAttemptAt, strategy: strategies[0] },
   ]
 
-  policy.debit.retryIntervalsHours.forEach((hours, i) => {
+  // EasyPay runs its own, separately-configured cadence when set — falls
+  // back to the shared ladder otherwise.
+  const intervals =
+    rail === "EASY_PAY" && policy.debit.easyPayRetryIntervalsHours
+      ? policy.debit.easyPayRetryIntervalsHours
+      : policy.debit.retryIntervalsHours
+
+  intervals.forEach((hours, i) => {
     const at = new Date(firstAttemptAt.getTime() + hours * 3_600_000)
     plans.push({
       attemptNo: i + 1,
