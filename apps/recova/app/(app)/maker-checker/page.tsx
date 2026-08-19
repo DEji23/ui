@@ -55,7 +55,11 @@ const APPROVAL_POLICIES: ApprovalPolicy[] = [
     action: "Force debit / recovery override",
     permission: "recovery.override",
     thresholdNaira: 100_000,
-    requiredApprovers: ["DRM", "Admin"],
+    // Admin is deliberately excluded from recovery.override in rbac.ts, same
+    // segregation-of-duties reasoning as ap_refund — org-level config access
+    // shouldn't also reach recovery-override authority. DRM is the only
+    // eligible checker.
+    requiredApprovers: ["DRM"],
   },
   {
     id: "ap_policy",
