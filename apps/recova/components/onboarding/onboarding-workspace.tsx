@@ -17,6 +17,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { shortDate } from "@/lib/format"
+import { APP_NOW } from "@/lib/clock"
 import { ORGANISATIONS, STAFF_ONBOARDING, type Organisation } from "@/lib/data/organisations"
 import { can, ROLE_LABEL } from "@/lib/domain/rbac"
 import { CURRENT_USER } from "@/lib/data/session"
@@ -583,6 +584,19 @@ function AdminCreationCard({
   const current = advancedThrough === index
   const admin = org.users.find((u) => u.role === "ADMIN")
 
+  // Activation email and role assignment happen inside RECOVA, so they get
+  // a real action; password setup and MFA happen on the Company Admin's own
+  // device, outside this UI, so RECOVA can only attest they were completed
+  // — same split as the internal-staff activation flow at /activate/[userId].
+  const [emailSent, setEmailSent] = React.useState<string | null>(null)
+  const [passwordAttested, setPasswordAttested] = React.useState(false)
+  const [mfaAttested, setMfaAttested] = React.useState(false)
+  const [assignedRole, setAssignedRole] = React.useState("")
+  const [roleConfirmed, setRoleConfirmed] = React.useState<string | null>(null)
+
+  const allStepsComplete =
+    emailSent !== null && passwordAttested && mfaAttested && roleConfirmed !== null
+
   return (
     <PhaseCard
       index={index}
@@ -595,17 +609,126 @@ function AdminCreationCard({
         <Row label="Email">{admin?.email ?? org.businessEmail}</Row>
         <Row label="Phone">{org.phoneNumber}</Row>
       </div>
-      <ItemList title="Activation sequence" items={ADMIN_ACTIVATION_STEPS} done={done} ordered />
+
+      {current ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Activation sequence
+          </p>
+
+          <StepRow label="Activation email" done={emailSent !== null} at={emailSent}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={emailSent !== null}
+              onClick={() => setEmailSent(shortDate(APP_NOW.toISOString()))}
+            >
+              Send Activation Email
+            </Button>
+          </StepRow>
+
+          <StepRow label="Password setup" done={passwordAttested} at={null}>
+            <label className="flex items-center gap-2 text-xs text-body">
+              <input
+                type="checkbox"
+                className="size-3.5 accent-[var(--color-brand)]"
+                checked={passwordAttested}
+                disabled={emailSent === null}
+                onChange={(e) => setPasswordAttested(e.target.checked)}
+              />
+              Company Admin confirmed password was set on their own device
+            </label>
+          </StepRow>
+
+          <StepRow label="MFA" done={mfaAttested} at={null}>
+            <label className="flex items-center gap-2 text-xs text-body">
+              <input
+                type="checkbox"
+                className="size-3.5 accent-[var(--color-brand)]"
+                checked={mfaAttested}
+                disabled={!passwordAttested}
+                onChange={(e) => setMfaAttested(e.target.checked)}
+              />
+              Company Admin confirmed MFA was enrolled on their own device
+            </label>
+          </StepRow>
+
+          <StepRow label="Role Assignment" done={roleConfirmed !== null} at={roleConfirmed}>
+            <div className="flex items-center gap-2">
+              <Select
+                value={assignedRole}
+                disabled={!mfaAttested || roleConfirmed !== null}
+                onChange={(e) => setAssignedRole(e.target.value)}
+                className="h-9 text-xs"
+              >
+                <option value="">Select role</option>
+                <option value="ADMIN">Org Administrator</option>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={assignedRole === "" || roleConfirmed !== null}
+                onClick={() => setRoleConfirmed(shortDate(APP_NOW.toISOString()))}
+              >
+                Assign
+              </Button>
+            </div>
+          </StepRow>
+        </div>
+      ) : (
+        <ItemList title="Activation sequence" items={ADMIN_ACTIVATION_STEPS} done={done} ordered />
+      )}
+
       <PhaseActionFooter
         current={current}
         done={done}
         successStatus={EXTERNAL_PHASE_STATUS_SUCCESS.ADMIN_USER_CREATION}
         actionLabel="Confirm Admin Activated"
         onAction={onAdvance}
-        disabled={!mayApprove}
-        disabledReason="Requires the role.assign permission."
+        disabled={!mayApprove || !allStepsComplete}
+        disabledReason={
+          !allStepsComplete
+            ? "Complete every activation step first."
+            : "Requires the role.assign permission."
+        }
       />
     </PhaseCard>
+  )
+}
+
+/** A single individually-confirmable step row, shared by AdminCreationCard
+ *  and ProductionApprovalCard. */
+function StepRow({
+  label,
+  done,
+  at,
+  children,
+}: {
+  label: string
+  done: boolean
+  at: string | null
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-[var(--radius-control)] border p-3 sm:flex-row sm:items-center sm:justify-between",
+        done ? "border-success-200 bg-success-50/50" : "border-stroke"
+      )}
+    >
+      <div className="flex items-center gap-2">
+        {done ? (
+          <CheckCircle2 className="size-4 shrink-0 text-success-600" />
+        ) : (
+          <Circle className="size-4 shrink-0 text-muted" />
+        )}
+        <span className="text-xs font-semibold text-ink">{label}</span>
+        {at ? <span className="text-[10px] text-subtle">· confirmed {at}</span> : null}
+      </div>
+      {children}
+    </div>
   )
 }
 
@@ -919,6 +1042,22 @@ function ProductionApprovalCard({
   const live = advancedThrough > index
   const current = advancedThrough === index
 
+  const [apiKeysIssued, setApiKeysIssued] = React.useState<string | null>(null)
+  const [webhookUrl, setWebhookUrl] = React.useState("")
+  const [webhookConfirmed, setWebhookConfirmed] = React.useState<string | null>(null)
+  const [settlementBank, setSettlementBank] = React.useState("")
+  const [settlementAccountNumber, setSettlementAccountNumber] = React.useState("")
+  const [settlementAccountName, setSettlementAccountName] = React.useState("")
+  const [settlementConfirmed, setSettlementConfirmed] = React.useState<string | null>(null)
+
+  const webhookValid = /^https:\/\/.+/.test(webhookUrl)
+  const settlementValid =
+    settlementBank.trim() !== "" &&
+    /^\d{10}$/.test(settlementAccountNumber) &&
+    settlementAccountName.trim() !== ""
+  const readyForGoLive =
+    apiKeysIssued !== null && webhookConfirmed !== null && settlementConfirmed !== null
+
   return (
     <PhaseCard
       index={index}
@@ -926,30 +1065,144 @@ function ProductionApprovalCard({
       title={EXTERNAL_PHASE_LABEL.PRODUCTION_APPROVAL}
       description="VFD Operations approves production keys, webhooks and settlement account, then goes live."
     >
-      <ItemList title="Approval sequence" items={PRODUCTION_APPROVAL_STEPS} done={live} ordered />
       {live ? (
-        <Alert tone="success" title={EXTERNAL_PHASE_STATUS_SUCCESS.PRODUCTION_APPROVAL}>
-          {org.tradingName} is live. Production credentials issued and countersigned by{" "}
-          {CURRENT_USER.name}.
-        </Alert>
+        <>
+          <ItemList title="Approval sequence" items={PRODUCTION_APPROVAL_STEPS} done />
+          <Alert tone="success" title={EXTERNAL_PHASE_STATUS_SUCCESS.PRODUCTION_APPROVAL}>
+            {org.tradingName} is live. Production credentials issued and countersigned by{" "}
+            {CURRENT_USER.name}.
+          </Alert>
+        </>
+      ) : current ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+            Approval sequence — each step confirmed independently
+          </p>
+
+          <StepRow label="Production API Keys" done={apiKeysIssued !== null} at={apiKeysIssued}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={apiKeysIssued !== null}
+              onClick={() => setApiKeysIssued(shortDate(APP_NOW.toISOString()))}
+            >
+              Generate Keys
+            </Button>
+          </StepRow>
+
+          <div
+            className={cn(
+              "flex flex-col gap-2 rounded-[var(--radius-control)] border p-3",
+              webhookConfirmed !== null ? "border-success-200 bg-success-50/50" : "border-stroke"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {webhookConfirmed !== null ? (
+                <CheckCircle2 className="size-4 shrink-0 text-success-600" />
+              ) : (
+                <Circle className="size-4 shrink-0 text-muted" />
+              )}
+              <span className="text-xs font-semibold text-ink">Production Webhooks</span>
+              {webhookConfirmed ? (
+                <span className="text-[10px] text-subtle">· confirmed {webhookConfirmed}</span>
+              ) : null}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={webhookUrl}
+                disabled={apiKeysIssued === null || webhookConfirmed !== null}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                placeholder="https://client.example.com/webhooks/recova"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={apiKeysIssued === null || !webhookValid || webhookConfirmed !== null}
+                title={!webhookValid ? "Enter a valid https:// webhook URL." : undefined}
+                onClick={() => setWebhookConfirmed(shortDate(APP_NOW.toISOString()))}
+              >
+                Save URL
+              </Button>
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "flex flex-col gap-2 rounded-[var(--radius-control)] border p-3",
+              settlementConfirmed !== null ? "border-success-200 bg-success-50/50" : "border-stroke"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {settlementConfirmed !== null ? (
+                <CheckCircle2 className="size-4 shrink-0 text-success-600" />
+              ) : (
+                <Circle className="size-4 shrink-0 text-muted" />
+              )}
+              <span className="text-xs font-semibold text-ink">
+                Settlement Account Configuration
+              </span>
+              {settlementConfirmed ? (
+                <span className="text-[10px] text-subtle">· confirmed {settlementConfirmed}</span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Input
+                value={settlementBank}
+                disabled={webhookConfirmed === null || settlementConfirmed !== null}
+                onChange={(e) => setSettlementBank(e.target.value)}
+                placeholder="Settlement bank"
+              />
+              <Input
+                value={settlementAccountNumber}
+                disabled={webhookConfirmed === null || settlementConfirmed !== null}
+                onChange={(e) => setSettlementAccountNumber(e.target.value.replace(/\D/g, ""))}
+                placeholder="10-digit account number"
+                inputMode="numeric"
+                maxLength={10}
+              />
+              <Input
+                value={settlementAccountName}
+                disabled={webhookConfirmed === null || settlementConfirmed !== null}
+                onChange={(e) => setSettlementAccountName(e.target.value)}
+                placeholder="Account name"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              disabled={webhookConfirmed === null || !settlementValid || settlementConfirmed !== null}
+              title={!settlementValid ? "Enter a bank, 10-digit account number and account name." : undefined}
+              onClick={() => setSettlementConfirmed(shortDate(APP_NOW.toISOString()))}
+            >
+              Save Settlement Account
+            </Button>
+          </div>
+
+          <Button
+            variant="primary"
+            size="lg"
+            block
+            disabled={!readyForGoLive || !mayApprove}
+            title={
+              !readyForGoLive
+                ? "Confirm API keys, webhooks and settlement account first."
+                : !mayApprove
+                  ? "Requires the role.assign permission."
+                  : undefined
+            }
+            onClick={onAdvance}
+          >
+            <Rocket />
+            Approve Go-Live
+          </Button>
+        </div>
       ) : (
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          disabled={!current || !mayApprove}
-          title={
-            !current
-              ? "Complete every prior phase first."
-              : !mayApprove
-                ? "Requires the role.assign permission."
-                : undefined
-          }
-          onClick={onAdvance}
-        >
-          <Rocket />
-          Approve Go-Live
-        </Button>
+        <ItemList title="Approval sequence" items={PRODUCTION_APPROVAL_STEPS} done={false} ordered />
       )}
     </PhaseCard>
   )
