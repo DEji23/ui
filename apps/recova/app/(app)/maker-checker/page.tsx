@@ -36,7 +36,10 @@ const APPROVAL_POLICIES: ApprovalPolicy[] = [
     action: "Refund approval",
     permission: "refund.approve",
     thresholdNaira: 50_000,
-    requiredApprovers: ["Finance", "Admin"],
+    // Admin is deliberately excluded from refund.approve in rbac.ts —
+    // segregation of duties keeps org-level config access from also
+    // reaching financial approval. Finance is the only eligible checker.
+    requiredApprovers: ["Finance"],
   },
   {
     id: "ap_legal",
