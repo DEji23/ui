@@ -23,6 +23,7 @@ export const ACCOUNT_POOL: Record<string, LinkedAccount[]> = {
       lastCreditAt: "2026-08-05T08:14:00Z",
       riskScore: 0.14,
       blacklisted: false,
+      preferred: true,
     },
     {
       accountNumber: "0447781200",
@@ -36,6 +37,7 @@ export const ACCOUNT_POOL: Record<string, LinkedAccount[]> = {
       lastCreditAt: "2026-07-11T10:02:00Z",
       riskScore: 0.52,
       blacklisted: false,
+      backup: true,
     },
     {
       accountNumber: "0570034411",

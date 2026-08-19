@@ -126,6 +126,12 @@ export interface LinkedAccount {
   lastCreditAt: string | null
   riskScore: number
   blacklisted: boolean
+  /** Customer-designated preferred account for mandate setup — ranked first,
+   *  ahead of highest-historical-inflow. Distinct from isPrimary, which is
+   *  the bank's own default-account flag. */
+  preferred?: boolean
+  /** Customer-designated backup account for mandate setup — ranked last. */
+  backup?: boolean
 }
 
 /* ------------------------------------------------------------------ */
