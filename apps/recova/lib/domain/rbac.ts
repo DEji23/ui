@@ -113,6 +113,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "mandate.view",
     "mandate.cancel",
     "escalation.trigger",
+    // Onboarding PRD Phase 3 lists "Escalate legal" as a DRM permission, and
+    // the maker-checker legal-escalation policy already lists DRM as a
+    // co-signer — this was the missing enforcement-side grant.
+    "legal.escalate",
     "collections.assign",
     "collections.manage",
     "dispute.review",
