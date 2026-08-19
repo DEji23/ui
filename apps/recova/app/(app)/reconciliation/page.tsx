@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
 import { ReconciliationPill } from "@/components/shared/status-pill"
 import { ReconciliationPageActions } from "@/components/wizards/misc-page-actions"
+import { ReconciliationEngineKpis } from "@/components/shared/engine-kpis"
 
 /**
  * Reconciliation engine view.
@@ -61,6 +62,8 @@ export default function ReconciliationPage() {
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">
+        <ReconciliationEngineKpis />
+
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Reconciliation Accuracy"

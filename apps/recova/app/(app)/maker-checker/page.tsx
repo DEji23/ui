@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
 import { ResultDialog } from "@/components/queues/action-dialogs"
+import { RbacWorkflowKpis } from "@/components/shared/engine-kpis"
 
 interface ApprovalPolicy {
   id: string
@@ -127,6 +128,8 @@ export default function MakerCheckerPage() {
       />
 
       <div className="flex flex-col gap-6 px-8 pb-12">
+        <RbacWorkflowKpis />
+
         <Alert tone="info" title="Separation of duties">
           No single user may initiate, approve and settle a financial action. A maker
           cannot approve their own request, and every decision is written to the audit

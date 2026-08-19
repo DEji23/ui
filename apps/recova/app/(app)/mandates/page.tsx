@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header"
 import { MandateModule } from "@/components/mandates/mandate-module"
 import { MandatePageActions } from "@/components/wizards/page-actions"
 import { BankCapabilityTable } from "@/components/mandates/bank-capability-table"
+import { MandateOrchestrationEngineKpis } from "@/components/shared/engine-kpis"
 
 export default function MandatesPage() {
   return (
@@ -22,6 +23,7 @@ export default function MandatesPage() {
         }
       />
       <div className="flex flex-col gap-6 px-8 pb-12">
+        <MandateOrchestrationEngineKpis />
         <MandateModule />
         <BankCapabilityTable />
       </div>
