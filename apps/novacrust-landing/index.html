@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Novacrust — Your USDC, in naira, in minutes</title>
+    <meta
+      name="description"
+      content="Cash out USDC or USDT to a Nigerian bank account with no P2P risk and the full cost shown before you confirm."
+    />
+    <meta name="theme-color" content="#0a1b33" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav__inner">
+        <a class="logo" href="#top" aria-label="Novacrust home">
+          <span class="logo__mark" aria-hidden="true"></span>Novacrust
+        </a>
+        <a class="btn btn--sm" href="#" data-cta>Cash out your first $200 fee-free</a>
+      </div>
+    </header>
+
+    <main id="top">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="wrap hero__inner">
+          <p class="eyebrow">For devs and designers paid in USDC / USDT</p>
+          <h1>Your USDC, in naira, in minutes</h1>
+          <p class="lede">
+            No P2P risk, no stranger to trust. You see the full cost before you confirm, then the
+            naira lands in your bank account.
+          </p>
+          <a class="btn btn--lg" href="#" data-cta>Cash out your first $200 fee-free</a>
+          <p class="fine">Offer terms apply. Rates shown below are samples.</p>
+        </div>
+      </section>
+
+      <!-- How it works -->
+      <section class="section" id="how">
+        <div class="wrap">
+          <h2>Three steps. No middleman.</h2>
+          <ol class="steps">
+            <li class="step">
+              <span class="step__num">1</span>
+              <h3>Send your stablecoin</h3>
+              <p>Pick USDC or USDT and the network you hold it on, then send to your Novacrust address.</p>
+              <span class="tag">~ a few minutes</span>
+            </li>
+            <li class="step">
+              <span class="step__num">2</span>
+              <h3>Review the full cost</h3>
+              <p>See the rate, the fee and the exact naira you'll receive. Nothing is hidden until later.</p>
+              <span class="tag">Before you confirm</span>
+            </li>
+            <li class="step">
+              <span class="step__num">3</span>
+              <h3>Get naira in your bank</h3>
+              <p>Confirm and we pay out to your Nigerian bank account. You can track it until it lands.</p>
+              <span class="tag">Placeholder: ~15 min</span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Calculator -->
+      <section class="section section--tint" id="calculator">
+        <div class="wrap calc-wrap">
+          <div class="calc-copy">
+            <h2>See exactly what you'd get</h2>
+            <p>
+              Every cost line is on screen before you confirm. The rate here is a
+              <strong>sample</strong> so you can see how the math works; your real rate is shown
+              at confirmation.
+            </p>
+          </div>
+
+          <form class="calc" id="calc" novalidate autocomplete="off">
+            <div class="calc__field">
+              <label for="amount">You send</label>
+              <div class="calc__input">
+                <input id="amount" inputmode="decimal" value="500" aria-describedby="amount-hint" />
+                <span class="calc__ccy">USDC</span>
+              </div>
+              <p class="calc__hint" id="amount-hint" hidden></p>
+            </div>
+
+            <label class="toggle">
+              <input type="checkbox" id="promo" />
+              <span>Apply first cash-out offer (first $200 fee-free)</span>
+            </label>
+
+            <dl class="ledger" aria-live="polite">
+              <div>
+                <dt>Fee (<span id="fee-pct">1</span>%)</dt>
+                <dd id="fee">—</dd>
+              </div>
+              <div>
+                <dt>Amount converted</dt>
+                <dd id="converted">—</dd>
+              </div>
+              <div>
+                <dt>
+                  Rate
+                  <span class="chip">Sample rate, not live</span>
+                </dt>
+                <dd id="rate">—</dd>
+              </div>
+            </dl>
+
+            <div class="calc__result">
+              <span>You receive</span>
+              <output id="receive" for="amount promo">—</output>
+            </div>
+
+            <a class="btn btn--block" href="#" data-cta>Cash out your first $200 fee-free</a>
+            <p class="fine">
+              Illustrative only. Final rate and fee are shown before you confirm.
+            </p>
+          </form>
+        </div>
+      </section>
+
+      <!-- Trust strip -->
+      <section class="trust" aria-labelledby="trust-h">
+        <div class="wrap">
+          <h2 id="trust-h">Built to be boring in the best way</h2>
+          <ul class="trust__grid">
+            <li>
+              <span class="trust__big">~15 min</span>
+              <strong>Median payout time</strong>
+              <small>Placeholder. Replace with measured median before launch.</small>
+            </li>
+            <li>
+              <span class="trust__big">Upfront</span>
+              <strong>Fees shown first</strong>
+              <small>Rate, fee and naira amount appear before you confirm.</small>
+            </li>
+            <li>
+              <span class="trust__big">Human</span>
+              <strong>Real support</strong>
+              <small>Reach a person if a transfer needs attention.</small>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section class="section" id="faq">
+        <div class="wrap faq">
+          <h2>Questions</h2>
+          <div class="faq__list">
+            <details open>
+              <summary>Which networks do you support?</summary>
+              <p>
+                Placeholder list: USDC and USDT on Tron, Ethereum, Solana and Base. Sending on an
+                unsupported network can mean lost funds, so check the network before you send.
+              </p>
+            </details>
+            <details>
+              <summary>What if my transfer is delayed?</summary>
+              <p>
+                Most delays come from network congestion or a bank-side hold. You can track status
+                in the app, and our support team can look into any transfer that's slower than
+                expected.
+              </p>
+            </details>
+            <details>
+              <summary>Is it safe?</summary>
+              <p>
+                There's no P2P counterparty, so there's no stranger who can fail to pay you. You
+                review the full cost before confirming, and we never ask for your wallet's private
+                keys or seed phrase.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap">
+        <p>
+          © Novacrust. Rates, payout times and supported networks on this page are placeholders
+          until launch. Always confirm the final rate and fee at checkout.
+        </p>
+      </div>
+    </footer>
+
+    <div class="sticky" id="sticky" aria-hidden="true">
+      <a class="btn btn--block" href="#" data-cta tabindex="-1">Cash out your first $200 fee-free</a>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
